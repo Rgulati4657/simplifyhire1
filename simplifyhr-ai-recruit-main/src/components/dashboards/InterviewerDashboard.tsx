@@ -268,6 +268,10 @@ import { InterviewListItem } from '@/components/interviewer/InterviewListItem';
 import { InterviewDetailModal } from '@/components/modals/InterviewDetailModal';
 import { ViewJobModal } from '@/components/modals/ViewJobModal';
 
+
+
+
+import { AvailabilityManager } from '@/components/ui/AvailabilityManager';
 // Define the types for our data
 interface Interview {
   id: string;
@@ -296,6 +300,11 @@ const InterviewerDashboard = () => {
   const [isAvailabilityModalOpen, setIsAvailabilityModalOpen] = useState(false);
   const [availabilitySlots, setAvailabilitySlots] = useState<string[]>([]);
   const [isFetchingSlots, setIsFetchingSlots] = useState(false);
+
+
+// The state now holds the entire complex object, or null
+const [availabilityData, setAvailabilityData] = useState<any | null>(null);
+
 
   useEffect(() => {
     // ... existing useEffect hook to fetch interviews ...
@@ -368,9 +377,12 @@ const InterviewerDashboard = () => {
    const handleOpenAvailabilityModal = async () => {
     setIsFetchingSlots(true);
     try {
+      console.log("Fetching existing availability from the database...");
       const { data, error } = await supabase.rpc('get_my_availability');
       if (error) throw error;
-      setAvailabilitySlots(data || []);
+       console.log("Successfully fetched data:", data);
+      // setAvailabilitySlots(data || []);
+            setAvailabilityData({ availability: data }); // Wrap it to match the expected structure
       setIsAvailabilityModalOpen(true);
     } catch (error: any) {
       toast({ title: "Could not load schedule", description: error.message, variant: "destructive" });
@@ -380,9 +392,9 @@ const InterviewerDashboard = () => {
   };
 
   // --- NEW: Handler function to save the availability ---
- const handleSaveAvailability = async (slots: string[]) => {
+ const handleSaveAvailability = async (updatedData: any) => {
     try {
-      const { error } = await supabase.rpc('update_user_availability', { new_slots: slots });
+      const { error } = await supabase.rpc('update_user_availability', { new_slots: updatedData });
       if (error) throw error;
       toast({ title: "Availability Saved!", description: "Your schedule has been updated." });
       setIsAvailabilityModalOpen(false);
@@ -535,10 +547,10 @@ const InterviewerDashboard = () => {
               Select the 1-hour slots where you are free. This schedule will be shown to candidates and recruiters.
             </DialogDescription>
           </DialogHeader>
-          {isAvailabilityModalOpen && (
-              <AvailabilitySelector
+           {isAvailabilityModalOpen && (
+              <AvailabilityManager
                 key={new Date().getTime()}
-                initialSlots={availabilitySlots}
+                initialData={availabilityData}
                 onSave={handleSaveAvailability}
                 onClose={() => setIsAvailabilityModalOpen(false)}
               />

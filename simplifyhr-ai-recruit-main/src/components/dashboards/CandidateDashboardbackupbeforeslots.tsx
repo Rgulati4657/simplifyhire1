@@ -19,14 +19,13 @@ import {
   Upload,
   MoreHorizontal,
   DollarSign,
-  CalendarDays,
-  Loader2
+  CalendarDays
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-// import { AvailabilitySelector } from '@/components/ui/AvailabilitySelector';
+import { AvailabilitySelector } from '@/components/ui/AvailabilitySelector';
 import { EnhancedAvailabilitySelector } from '@/components/ui/EnhancedAvailabilitySelector';
 
 // --- INTEGRATION STEP 2: Define the types needed for our new component's data structure. ---
@@ -67,7 +66,7 @@ const CandidateDashboard = () => {
   const [applications, setApplications] = useState<any[]>([]);
   const [recommendedJobs, setRecommendedJobs] = useState<any[]>([]);
 
-  // const [availabilitySlots, setAvailabilitySlots] = useState<string[]>([]);
+  const [availabilitySlots, setAvailabilitySlots] = useState<string[]>([]);
 
 
   const [availabilityData, setAvailabilityData] = useState<AvailabilityObject[] | null>(null);
@@ -430,10 +429,7 @@ const fetchCandidateData = async () => {
 };
 
  const handleOpenAvailabilityModal = async () => {
-   setIsAvailabilityModalOpen(true);
     setIsFetchingSlots(true);
-    setAvailabilityData(null);
-
     try {
       console.log("1. Fetching schedule...");
       // Fetch the latest slots from the DB just before opening the modal
@@ -444,10 +440,10 @@ const fetchCandidateData = async () => {
          throw error;
         }
 
-         console.log("2. SUCCESS. Raw data from DB:", data);
-      
-      // C. Set the fetched data into the correct state variable.
-      setAvailabilityData(data || []); // Ensure it's an array even if data is null// Open modal only after data is fetched
+        const fetchedData = data || { free_slots: [], occupied_slots: [] };
+        console.log("3. SUCCESS. Raw data from DB:", fetchedData);
+        setAvailabilitySlots(fetchedData);
+        setIsAvailabilityModalOpen(true); // Open modal only after data is fetched
     } catch (error: any) {
       toast({ title: "Could not load schedule", description: error.message, variant: "destructive" });
     } finally {
@@ -906,19 +902,10 @@ const fetchCandidateData = async () => {
               </DialogDescription>
             </DialogHeader>
             {/* every time the modal is opened. This is a robust pattern. */}
-         {/* ============================================================ */}
-            {/* --- 5. THE GUARANTEED FIX: CONDITIONAL RENDERING --- */}
-            {/* We show a spinner while fetching, and ONLY render the child component when its data is ready. */}
-            {/* This eliminates all timing and state synchronization bugs permanently. */}
-            {/* ============================================================ */}
-            {isFetchingSlots ? (
-              <div className="flex items-center justify-center h-96">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-              </div>
-            ) : (
+          {isAvailabilityModalOpen && (
+              // <AvailabilitySelector
               <EnhancedAvailabilitySelector
-                // We no longer need the `key` prop because this component is only
-                // rendered when `availabilityData` is ready.
+                key={new Date().getTime()} // This forces a re-mount with fresh props
                 initialData={availabilityData}
                 onSave={handleSaveAvailability}
                 onClose={() => setIsAvailabilityModalOpen(false)}
