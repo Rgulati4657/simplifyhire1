@@ -7,7 +7,7 @@ import { ApplicationsTable } from '../tables/ApplicationsTable';
 
 import { MyApplicationsTable } from '../tables/MyApplicationsTable';
 import { MyInterviewsTable } from '../tables/MyInterviewsTable';
-
+import { InterviewsTable } from '../tables/InterviewsTable'; // <-- ADD THIS IMPORT
 interface TableRendererProps {
   type: DataType;
   data: any[];
@@ -42,6 +42,9 @@ export const TableRenderer = ({ type, data, onEdit , onView }: TableRendererProp
 
     case 'my-interviews':
       return <MyInterviewsTable data={data} />;
+
+    case 'scheduledInterviews':
+      return <InterviewsTable data={data} />;
 
     default:
       return null;

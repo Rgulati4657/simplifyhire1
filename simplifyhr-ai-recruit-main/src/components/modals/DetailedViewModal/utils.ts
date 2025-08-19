@@ -23,6 +23,23 @@ export const getSearchFields = (item: any, type: DataType): string[] => {
         item.jobs?.companies?.name,
         item.status
       ];
+       case 'my-interviews':
+      return [
+        item.job_title,
+        item.company_name,
+        item.status,
+      ].filter(Boolean);
+    case 'scheduledInterviews':
+      const profile = item.job_applications?.candidates?.profiles;
+      const job = item.job_applications?.jobs;
+      return [
+        profile?.first_name,
+        profile?.last_name,
+        profile?.email,
+        job?.title,
+        job?.companies?.name,
+        item.interviewer_names, // This is the new field we will add for names
+      ].filter(Boolean);
     default:
       return [];
   }
@@ -48,6 +65,8 @@ export const applyStatusFilter = (item: any, type: DataType, filterValue: string
       return item.status === filterValue;
      case 'my-applications':
     case 'in-review':
+       case 'my-interviews': 
+      case 'scheduledInterviews': // <-- ADDED HERE
       // The filter dropdown should work on the application's status
       return item.status === filterValue;
     default:

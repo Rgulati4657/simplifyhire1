@@ -1,4 +1,4 @@
-export type DataType = 'users' | 'companies' | 'vendors' | 'jobs' | 'applications' | 'activeJobs' | 'monthlyHires' | 'my-applications' | 'in-review' | 'my-interviews';
+export type DataType = 'users' | 'companies' | 'vendors' | 'jobs' | 'applications' | 'activeJobs' | 'monthlyHires' | 'my-applications' | 'in-review' | 'my-interviews'|'scheduledInterviews';
 
 export interface DetailedViewModalProps {
   type: DataType;

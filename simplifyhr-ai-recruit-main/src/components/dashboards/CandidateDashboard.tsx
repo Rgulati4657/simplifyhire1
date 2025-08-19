@@ -66,6 +66,7 @@ const CandidateDashboard = () => {
   });
   const [applications, setApplications] = useState<any[]>([]);
   const [recommendedJobs, setRecommendedJobs] = useState<any[]>([]);
+const [upcomingInterviews, setUpcomingInterviews] = useState<any[]>([]); // <-- ADD THIS LINE
 
   // const [availabilitySlots, setAvailabilitySlots] = useState<string[]>([]);
 
@@ -362,8 +363,41 @@ const fetchCandidateData = async () => {
     }
     setLoading(true);
     try {
-        console.log(`Fetching candidate applications for user ${profile.id} via RPC...`);
 
+        // 1. Fetch the interview data using our smart DB function.
+        const { data: interviewsData, error: interviewsError } = await supabase.rpc('get_my_scheduled_interviews');
+        if (interviewsError) {
+            console.error("Error fetching upcoming interviews:", interviewsError);
+            // We don't throw an error here, so the rest of the dashboard can still load.
+        } else if (interviewsData) {
+            // 2. Filter for only the truly "upcoming" interviews.
+            // const now = new Date();
+            // const upcoming = interviewsData.filter(interview =>
+            //     interview.status === 'scheduled' && new Date(interview.scheduled_at) >= now
+            // );
+            // setUpcomingInterviews(upcoming);
+                        const now = new Date();
+            const gracePeriodMinutes = 15; // Keep showing the interview for 15 minutes after it ends.
+
+            const upcoming = interviewsData.filter(interview => {
+                const startTime = new Date(interview.scheduled_at);
+                const duration = interview.duration_minutes || 60; // Default to 60 mins if not set
+                const endTime = new Date(startTime.getTime() + duration * 60000);
+                const cutoffTime = new Date(endTime.getTime() + gracePeriodMinutes * 60000);
+                
+                // Show if it's scheduled and the cutoff time hasn't passed yet
+                return interview.status === 'scheduled' && cutoffTime >= now;
+            });
+            setUpcomingInterviews(upcoming);
+        }
+        // --- END: ADD THIS NEW CODE BLOCK ---
+
+        console.log(`Fetching candidate applications for user ${profile.id} via RPC...`);
+         const { data: count, error: countError } = await supabase.rpc('get_my_interview_count');
+        if (countError) {
+            console.error("Error fetching interview count:", countError);
+            // Don't throw an error, just default to 0 so the page can still load
+        }
         // --- THIS IS THE FINAL FIX ---
         // We now call our single, powerful RPC function.
         const { data: applicationsData, error } = await supabase.rpc('get_my_applications');
@@ -381,12 +415,12 @@ const fetchCandidateData = async () => {
             // Your stats calculation will now work perfectly with the RPC data.
             const totalApps = applicationsData.length;
             const inReview = applicationsData.filter(app => ['applied', 'screening', 'reviewing'].includes(app.status)).length;
-            const interviews = applicationsData.filter(app => app.status === 'interview').length;
+            // const interviews = applicationsData.filter(app => app.status === 'interview').length;
             
             setStats({
                 applications: totalApps,
                 inReview,
-                interviews,
+                interviews: count || 0,
                 profileViews: 24 // Mock
             });
         }
@@ -747,7 +781,7 @@ const fetchCandidateData = async () => {
                   <h3 className="text-xl font-semibold text-gradient-primary">Upcoming Interviews</h3>
                   <p className="text-muted-foreground">Don't miss your scheduled interviews</p>
                 </div>
-                <div className="space-y-4">
+                {/* <div className="space-y-4">
                   <div className="p-4 rounded-lg bg-gradient-to-r from-primary/5 to-accent/5 border border-border/50">
                     <h4 className="font-medium text-foreground text-sm">Senior Frontend Developer</h4>
                     <p className="text-xs text-muted-foreground">TechInnovate</p>
@@ -771,6 +805,65 @@ const fetchCandidateData = async () => {
                       Pending Confirmation
                     </Button>
                   </div>
+                </div> */}
+                                <div className="space-y-4">
+                  {loading ? (
+                    <p className="text-sm text-muted-foreground text-center">Loading...</p>
+                  ) : upcomingInterviews.length > 0 ? (
+                    // upcomingInterviews.map((interview) => (
+                    //   <div key={interview.interview_id} className="p-4 rounded-lg bg-gradient-to-r from-primary/5 to-accent/5 border border-border/50">
+                    //     <h4 className="font-medium text-foreground text-sm">{interview.job_title}</h4>
+                    //     <p className="text-xs text-muted-foreground">{interview.company_name}</p>
+                    //     <div className="flex items-center space-x-2 mt-2">
+                    //       <Calendar className="w-3 h-3 text-muted-foreground" />
+                    //       <span className="text-xs text-muted-foreground">
+                    //         {new Date(interview.scheduled_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
+                    //       </span>
+                    //     </div>
+                    //     {/* You can add a "Join" or "Details" button here later if you wish */}
+                    //     {/* <Button variant="outline" size="sm" className="w-full mt-2">View Details</Button> */}
+                    //   </div>
+                    // ))
+                    // The final, correct version of the .map() function
+
+                  upcomingInterviews.map((interview) => {
+                    const now = new Date();
+                    const startTime = new Date(interview.scheduled_at);
+                    const duration = interview.duration_minutes || 60;
+                    const endTime = new Date(startTime.getTime() + duration * 60000);
+                    const isHappeningNow = startTime <= now && endTime >= now;
+
+                    return (
+                      <div 
+                        key={interview.interview_id} 
+                        // This adds a glowing effect if the interview is live
+                        className={`p-4 rounded-lg bg-gradient-to-r from-primary/5 to-accent/5 border transition-all ${isHappeningNow ? 'border-green-500 shadow-lg shadow-green-500/10' : 'border-border/50'}`}
+                      >
+                        <h4 className="font-medium text-foreground text-sm">{interview.job_title}</h4>
+                        <p className="text-xs text-muted-foreground">{interview.company_name}</p>
+                        <div className="flex items-center space-x-2 mt-2">
+                          <Calendar className="w-3 h-3 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(interview.scheduled_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
+                          </span>
+                          {isHappeningNow && <Badge variant="destructive">Live Now</Badge>}
+                        </div>
+                        
+                        {interview.meeting_urls?.primary && (
+                          <Button asChild variant={isHappeningNow ? "default" : "outline"} size="sm" className="w-full mt-2">
+                            <a href={interview.meeting_urls.primary} target="_blank" rel="noopener noreferrer">
+                              Join Interview
+                            </a>
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-muted-foreground">You have no upcoming interviews.</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

@@ -74,6 +74,14 @@ export const FILTER_OPTIONS: Record<DataType, FilterOption[]> = {
     { value: 'completed', label: 'Completed' },
     { value: 'missed', label: 'Missed' },
   ],
+   scheduledInterviews: [
+    { value: 'all', label: 'All Statuses' },
+    { value: 'scheduled', label: 'Scheduled' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'canceled', label: 'Canceled' },
+    { value: 'rescheduled', label: 'Rescheduled' },
+    { value: 'missed', label: 'Missed' }
+  ],
   
 };
 

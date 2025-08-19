@@ -57,11 +57,11 @@ const [applications, setApplications] = useState([]);
   const [recentJobs, setRecentJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [detailModal, setDetailModal] = useState<{
-    type: 'users' | 'companies' | 'jobs' | 'applications' | 'activeJobs' | 'monthlyHires';
+    type: 'users' | 'companies' | 'jobs' | 'applications' | 'activeJobs' | 'monthlyHires'|'scheduledInterviews';
     open: boolean;
     title: string;
     customFilterOptions?: { value: string; label: string }[];
-    customFilterOptions?: { value: string; label: string }[];
+    defaultFilter?: string;
   }>({
     type: 'jobs',
     open: false,
@@ -438,7 +438,7 @@ const fetchDashboardData = async () => {
           <div 
             className="stat-card group animate-slide-up"
             style={{ animationDelay: '300ms' }}
-            onClick={() => openDetailModal('applications', 'Scheduled Interviews')}
+            onClick={() => openDetailModal('scheduledInterviews', 'Scheduled Interviews')}
           >
             <div className="flex items-center justify-between p-6">
               <div className="flex-1">

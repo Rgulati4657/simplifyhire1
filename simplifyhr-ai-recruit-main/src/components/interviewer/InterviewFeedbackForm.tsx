@@ -26,23 +26,69 @@ export const InterviewFeedbackForm = ({ interviewId, onFeedbackSubmitted }: Inte
     notes: ''
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // const handleSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   setLoading(true);
+
+  //   try {
+  //     const { error } = await supabase
+  //       .from('interview_participants')
+  //       .update({
+  //         interviewer_score: formData.interviewer_score,
+  //         feedback: formData.feedback,
+  //         // We store strengths and weaknesses in the JSONB column
+  //         strengths: { notes: formData.strengths }, 
+  //         weaknesses: { notes: formData.weaknesses },
+  //         notes: formData.notes,
+  //         status: 'completed' // Critically, we update the status
+  //       })
+  //       .eq('id', interviewId);
+
+  //     if (error) throw error;
+
+  //     toast({
+  //       title: "Feedback Submitted",
+  //       description: "Your evaluation has been successfully recorded.",
+  //     });
+
+  //     onFeedbackSubmitted(); // Trigger the parent component to close/refresh
+
+  //   } catch (error: any) {
+  //     toast({
+  //       title: "Submission Error",
+  //       description: `Failed to submit feedback: ${error.message}`,
+  //       variant: "destructive",
+  //     });
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+  // In src/components/interviewer/InterviewFeedbackForm.tsx
+
+  // In src/components/interviewer/InterviewFeedbackForm.tsx
+
+const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const { error } = await supabase
-        .from('interview_participants')
-        .update({
-          interviewer_score: formData.interviewer_score,
-          feedback: formData.feedback,
-          // We store strengths and weaknesses in the JSONB column
-          strengths: { notes: formData.strengths }, 
-          weaknesses: { notes: formData.weaknesses },
-          notes: formData.notes,
-          status: 'completed' // Critically, we update the status
-        })
-        .eq('id', interviewId);
+      // --- START: CORRECTED RPC LOGIC ---
+      // 1. Call our new, secure database function with the required parameters.
+      const { error } = await supabase.rpc('submit_interviewer_feedback', {
+        schedule_id: interviewId,
+        scores: {
+          overall_score: formData.interviewer_score,
+          recommendation: formData.feedback,
+          strengths: formData.strengths,
+          weaknesses: formData.weaknesses
+        },
+        notes: {
+          private_notes: formData.notes
+        },
+        new_status: 'completed'
+      });
+      // --- END: CORRECTED RPC LOGIC ---
 
       if (error) throw error;
 
@@ -51,7 +97,7 @@ export const InterviewFeedbackForm = ({ interviewId, onFeedbackSubmitted }: Inte
         description: "Your evaluation has been successfully recorded.",
       });
 
-      onFeedbackSubmitted(); // Trigger the parent component to close/refresh
+      onFeedbackSubmitted();
 
     } catch (error: any) {
       toast({
@@ -62,9 +108,61 @@ export const InterviewFeedbackForm = ({ interviewId, onFeedbackSubmitted }: Inte
     } finally {
       setLoading(false);
     }
-  };
+};
 
-  return (
+
+// const handleSubmit = async (e: React.FormEvent) => {
+//     e.preventDefault();
+//     setLoading(true);
+
+//     try {
+//       // --- START: CORRECTED SUBMISSION LOGIC ---
+//       // 1. We structure the data to match the JSONB columns in the new table.
+//       const feedbackPayload = {
+//         // 'interviewer_scores' is a JSONB column that can hold structured data.
+//         interviewer_scores: {
+//           overall_score: formData.interviewer_score,
+//           recommendation: formData.feedback,
+//           strengths: formData.strengths,
+//           weaknesses: formData.weaknesses
+//         },
+//         // 'interviewer_notes' is another JSONB column for private notes.
+//         interviewer_notes: {
+//           private_notes: formData.notes
+//         },
+//         // 2. We also update the status of the interview schedule itself.
+//         status: 'completed'
+//       };
+
+//       // 3. We update the correct 'interview_schedules' table.
+//       const { error } = await supabase
+//         .from('interview_schedules')
+//         .update(feedbackPayload)
+//         .eq('id', interviewId);
+
+//       // --- END: CORRECTED SUBMISSION LOGIC ---
+
+//       if (error) throw error;
+
+//       toast({
+//         title: "Feedback Submitted",
+//         description: "Your evaluation has been successfully recorded.",
+//       });
+
+//       onFeedbackSubmitted(); // This correctly closes the modal
+
+//     } catch (error: any) {
+//       toast({
+//         title: "Submission Error",
+//         description: `Failed to submit feedback: ${error.message}`,
+//         variant: "destructive",
+//       });
+//     } finally {
+//       setLoading(false);
+//     }
+// };
+  
+return (
     <form onSubmit={handleSubmit} className="space-y-4 pt-4 border-t">
       <h3 className="font-semibold text-lg text-center">Submit Your Feedback</h3>
       

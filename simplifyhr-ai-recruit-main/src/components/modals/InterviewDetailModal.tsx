@@ -17,26 +17,48 @@ interface InterviewDetailModalProps {
 }
 
 // Define the shape of the detailed data we will fetch
+// interface DetailedInterview {
+//   id: string;
+//   status: string;
+//   scheduled_at: string;
+//   meeting_url: string;
+//   candidate_name: string;
+//   candidate_email: string;
+//   resume_url: string;
+//   job_title: string;
+//   job_description: string;
+//   job_location: string | null; // Add this
+//   job_employment_type: string | null; // Add this
+//   scoring_criteria: string[];
+//   ai_interview_enabled: boolean;
+//   ai_summary: string | null;
+//   transcript: any | null; // JSONB can be any object/array
+//   strengths: any | null;
+//   weaknesses: any | null;
+//   raw_scheduled_at: string; 
+//   has_passed: boolean; // Add this line
+// }
 interface DetailedInterview {
   id: string;
   status: string;
-  scheduled_at: string;
-  meeting_url: string;
+  scheduled_at: string; // This will be the formatted string
+  raw_scheduled_at: string; // The original ISO string for date logic
+  meeting_url: string | null;
   candidate_name: string;
   candidate_email: string;
-  resume_url: string;
+  candidate_phone: string | null;
+  resume_url: string | null;
+  job_id: string;
   job_title: string;
   job_description: string;
-  job_location: string | null; // Add this
-  job_employment_type: string | null; // Add this
+  job_location: string | null;
+  job_employment_type: string | null;
   scoring_criteria: string[];
   ai_interview_enabled: boolean;
   ai_summary: string | null;
-  transcript: any | null; // JSONB can be any object/array
+  transcript: any | null;
   strengths: any | null;
   weaknesses: any | null;
-  raw_scheduled_at: string; 
-  has_passed: boolean; // Add this line
 }
 
 export const InterviewDetailModal = ({ interviewId, open, onOpenChange, onViewJob }: InterviewDetailModalProps) => {
@@ -51,73 +73,131 @@ const handleFeedbackSubmitted = () => {
 };
 
 
+  // useEffect(() => {
+  //   const fetchInterviewDetails = async () => {
+  //     if (!interviewId) return;
+  //     setLoading(true);
+
+  //     // --- THIS IS THE CORRECTED, COMPLETE QUERY ---
+  //     const { data, error } = await supabase
+  //       .from('interview_participants')
+  //       .select(`
+  //         id,
+  //         status,
+  //         scheduled_at,
+  //         meeting_url,
+  //          ai_interview_enabled,
+  //         ai_summary,
+  //         transcript,
+  //         strengths,
+  //         weaknesses,
+  //         job_applications (
+  //           jobs ( id, title, description, location, employment_type ),
+  //           candidates ( first_name, last_name, email, phone, resume_url )
+  //         ),
+  //         interview_rounds ( scoring_criteria )
+  //       `)
+  //       .eq('id', interviewId)
+  //       .single(); // We expect only one record
+
+  //     if (error) {
+  //       console.error('Error fetching interview details:', error);
+  //       setInterviewData(null);
+  //     } else if (data) {
+  //       // This now formats all the data correctly
+  //       const formattedData = {
+  //         id: data.id,
+  //         status: data.status,
+  //         scheduled_at: new Date(data.scheduled_at).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' }),
+  //         raw_scheduled_at: data.scheduled_at,
+  //         meeting_url: data.meeting_url,
+  //         //  has_passed: data.has_passed, 
+  //         candidate_name: `${data.job_applications?.candidates?.first_name || ''} ${data.job_applications?.candidates?.last_name || ''}`.trim(),
+  //         candidate_email: data.job_applications?.candidates?.email,
+  //         candidate_phone: data.job_applications?.candidates?.phone,
+  //         resume_url: data.job_applications?.candidates?.resume_url, // Now correctly fetched
+  //         resume_text: data.job_applications?.candidates?.resume_text, // Now correctly fetched
+  //         job_id: data.job_applications?.jobs?.id, // We'll need this for the "View full job description" button
+  //         job_title: data.job_applications?.jobs?.title,
+  //         job_description: data.job_applications?.jobs?.description,
+  //         job_location: data.job_applications?.jobs?.location,
+  //         job_employment_type: data.job_applications?.jobs?.employment_type,
+  //         scoring_criteria: data.interview_rounds?.scoring_criteria || [],
+  //         ai_interview_enabled: data.ai_interview_enabled,
+  //         ai_summary: data.ai_summary,
+  //         transcript: data.transcript,
+  //         strengths: data.strengths,
+  //         weaknesses: data.weaknesses,
+  //       };
+  //       setInterviewData(formattedData);
+  //     }
+  //     setLoading(false);
+  //   };
+
+  //   if (open) {
+  //     fetchInterviewDetails();
+  //   }
+  // }, [interviewId, open]);
+
+ // We check if interviewData and its scheduled_at property exist first for safety.
+
+ // In InterviewDetailModal.tsx
+
   useEffect(() => {
     const fetchInterviewDetails = async () => {
       if (!interviewId) return;
       setLoading(true);
+      setInterviewData(null);
 
-      // --- THIS IS THE CORRECTED, COMPLETE QUERY ---
-      const { data, error } = await supabase
-        .from('interview_participants')
-        .select(`
-          id,
-          status,
-          scheduled_at,
-          meeting_url,
-           ai_interview_enabled,
-          ai_summary,
-          transcript,
-          strengths,
-          weaknesses,
-          job_applications (
-            jobs ( id, title, description, location, employment_type ),
-            candidates ( first_name, last_name, email, phone, resume_url )
-          ),
-          interview_rounds ( scoring_criteria )
-        `)
-        .eq('id', interviewId)
-        .single(); // We expect only one record
+      try {
+        // --- THIS IS THE NEW, SIMPLIFIED LOGIC ---
+        const { data, error } = await supabase.rpc('get_interview_details_for_interviewer', {
+          interview_id_param: interviewId
+        });
 
-      if (error) {
-        console.error('Error fetching interview details:', error);
-        setInterviewData(null);
-      } else if (data) {
-        // This now formats all the data correctly
-        const formattedData = {
-          id: data.id,
-          status: data.status,
-          scheduled_at: new Date(data.scheduled_at).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' }),
-          raw_scheduled_at: data.scheduled_at,
-          meeting_url: data.meeting_url,
-          //  has_passed: data.has_passed, 
-          candidate_name: `${data.job_applications?.candidates?.first_name || ''} ${data.job_applications?.candidates?.last_name || ''}`.trim(),
-          candidate_email: data.job_applications?.candidates?.email,
-          candidate_phone: data.job_applications?.candidates?.phone,
-          resume_url: data.job_applications?.candidates?.resume_url, // Now correctly fetched
-          resume_text: data.job_applications?.candidates?.resume_text, // Now correctly fetched
-          job_id: data.job_applications?.jobs?.id, // We'll need this for the "View full job description" button
-          job_title: data.job_applications?.jobs?.title,
-          job_description: data.job_applications?.jobs?.description,
-          job_location: data.job_applications?.jobs?.location,
-          job_employment_type: data.job_applications?.jobs?.employment_type,
-          scoring_criteria: data.interview_rounds?.scoring_criteria || [],
-          ai_interview_enabled: data.ai_interview_enabled,
-          ai_summary: data.ai_summary,
-          transcript: data.transcript,
-          strengths: data.strengths,
-          weaknesses: data.weaknesses,
-        };
-        setInterviewData(formattedData);
+        if (error) throw error;
+        
+        // The RPC call returns an array, but we only expect one item
+        const details = data?.[0];
+
+        if (details) {
+          const formattedData = {
+            id: details.id,
+            status: details.status,
+            scheduled_at: new Date(details.scheduled_at).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' }),
+            raw_scheduled_at: details.scheduled_at,
+            // meeting_url: details.meeting_urls?.zoom || details.meeting_urls?.google_meet || null,
+            meeting_url: details.meeting_urls?.primary || null,
+            candidate_name: details.candidate_name,
+            candidate_email: details.candidate_email,
+            candidate_phone: details.candidate_phone,
+            resume_url: details.resume_url,
+            job_id: details.job_id,
+            job_title: details.job_title,
+            job_description: details.job_description,
+            job_location: details.job_location,
+            job_employment_type: details.job_employment_type,
+            // scoring_criteria: details.scoring_criteria || [],
+            scoring_criteria: details.scoring_criteria?.round_specific || [],
+            ai_interview_enabled: details.ai_interview_enabled,
+            ai_summary: details.final_ai_review,
+            transcript: details.ai_conversation_log,
+            strengths: details.interviewer_scores?.strengths || null,
+            weaknesses: details.interviewer_scores?.weaknesses || null,
+          };
+          setInterviewData(formattedData as DetailedInterview);
+        }
+      } catch (err: any) {
+        console.error('Error fetching interview details:', err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     if (open) {
       fetchInterviewDetails();
     }
   }, [interviewId, open]);
-
- // We check if interviewData and its scheduled_at property exist first for safety.
 
   const interviewTimeHasPassed = interviewData?.scheduled_at 
     ? new Date(interviewData.scheduled_at) < new Date() 
@@ -381,7 +461,8 @@ const handleFeedbackSubmitted = () => {
                     </div>
                   );
                 }
-                
+                const interviewTimeHasPassed = new Date(interviewData.raw_scheduled_at) < new Date();
+
                 // State 4: Interview is still 'scheduled'. Check the time.
                 if (interviewTimeHasPassed) {
                   // If time has passed, show the new confirmation choice.
@@ -392,7 +473,20 @@ const handleFeedbackSubmitted = () => {
                         Please confirm if this interview took place as scheduled.
                       </p>
                       <div className="flex justify-center space-x-4 mt-4">
-                        <Button
+                                                <Button
+                          variant="outline"
+                          onClick={async () => {
+                            if (!interviewData?.id) return;
+                            await supabase
+                              .from('interview_schedules') // <-- CORRECT TABLE
+                              .update({ status: 'missed' })
+                              .eq('id', interviewData.id);
+                            onOpenChange(false); // Closing the modal is fine here, as no further action is needed
+                          }}
+                        >
+                          No, it was missed
+                        </Button>
+                        {/* <Button
                           variant="outline"
                           onClick={async () => {
                             // The "NO" button logic
@@ -404,8 +498,8 @@ const handleFeedbackSubmitted = () => {
                           }}
                         >
                           No, it was missed
-                        </Button>
-                        <Button
+                        </Button> */}
+                        {/* <Button
                           onClick={async () => {
                             // The "YES" button logic
                             await supabase
@@ -415,6 +509,34 @@ const handleFeedbackSubmitted = () => {
                             // To see the change immediately, we should refetch the data.
                             // The simplest way is to close and let the user reopen.
                             onOpenChange(false);
+                          }}
+                        >
+                          Yes, unlock feedback form
+                        </Button> */}
+                                                <Button
+                          onClick={async () => {
+                            // --- START: CORRECTED "YES" BUTTON LOGIC ---
+                            if (!interviewData?.id) return; // Safety check
+
+                            // 1. Update the correct table to change the status.
+                            const { error } = await supabase
+                              .from('interview_schedules') // <-- THE CORRECT TABLE
+                              .update({ status: 'awaiting_feedback' })
+                              .eq('id', interviewData.id);
+
+                            if (error) {
+                              // You should add a toast notification here for a better user experience
+                              console.error("Failed to update interview status:", error);
+                              return;
+                            }
+
+                            // 2. IMPORTANT: Instead of closing the modal, we update the local state
+                            //    so the feedback form appears instantly without needing to reopen.
+                            setInterviewData(prevData => {
+                              if (!prevData) return null;
+                              return { ...prevData, status: 'awaiting_feedback' };
+                            });
+                            // --- END: CORRECTED "YES" BUTTON LOGIC ---
                           }}
                         >
                           Yes, unlock feedback form
@@ -585,3 +707,4 @@ const handleFeedbackSubmitted = () => {
 //   );
 
 };
+

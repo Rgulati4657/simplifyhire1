@@ -223,6 +223,24 @@ import { deepMerge } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Enhanced interface matching the payload structure
+// --- START: PASTE THE HELPER FUNCTIONS HERE ---
+// This function takes a UTC ISO string from the DB and converts it to a string for the datetime-local input
+const toLocalISOString = (isoString: string): string => {
+  if (!isoString) return ''; // Safety check for null or undefined strings
+  const date = new Date(isoString);
+  const tzOffset = date.getTimezoneOffset() * 60000; // Offset in milliseconds
+  const localISOTime = new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+  return localISOTime;
+};
+
+// This function takes the local time string from the input and converts it back to a full UTC ISO string for saving
+const toUTCISOString = (localString: string): string => {
+  if (!localString) return ''; // Safety check
+  const date = new Date(localString);
+  return date.toISOString();
+};
+// --- END: PASTE THE HELPER FUNCTIONS HERE ---
+
 interface AvailabilityData {
   availability: {
     timezone: string;
@@ -804,19 +822,29 @@ export const AvailabilityManager = ({ initialData, onSave, onClose }: Availabili
                       <div className="grid grid-cols-3 gap-4">
                         <div>
                           <Label>Start Time</Label>
-                          <Input
+                          {/* <Input
                             type="datetime-local"
                             value={slot.start_time.slice(0, 16)}
                             onChange={(e) => updateNestedState(`availability.free_slots.${index}.start_time`, new Date(e.target.value).toISOString())}
-                          />
+                          /> */}
+                          <Input
+  type="datetime-local"
+  value={toLocalISOString(slot.start_time)}
+  onChange={(e) => updateNestedState(`availability.free_slots.${index}.start_time`, toUTCISOString(e.target.value))}
+/>
                         </div>
                         <div>
                           <Label>End Time</Label>
-                          <Input
+                          {/* <Input
                             type="datetime-local"
                             value={slot.end_time.slice(0, 16)}
                             onChange={(e) => updateNestedState(`availability.free_slots.${index}.end_time`, new Date(e.target.value).toISOString())}
-                          />
+                          /> */}
+                   <Input
+  type="datetime-local"
+  value={toLocalISOString(slot.end_time)}
+  onChange={(e) => updateNestedState(`availability.free_slots.${index}.end_time`, toUTCISOString(e.target.value))}
+/>       
                         </div>
                         <div>
                           <Label>Priority</Label>
