@@ -59,7 +59,20 @@ export const AIAnalysisDisplay = ({ summary, strengths, weaknesses, transcript }
           <div>
             <h4 className="font-semibold flex items-center mb-2"><FileText className="w-4 h-4 mr-2" /> Full Transcript</h4>
             <div className="p-2 border rounded-md h-48 overflow-y-auto bg-background text-xs">
-              <p className="whitespace-pre-wrap">{/* Logic to display transcript, e.g., JSON.stringify(transcript, null, 2) or a custom renderer */}</p>
+             
+             <div className="space-y-2">
+  {transcript && Array.isArray(transcript) ? (
+    transcript.map((line, index) => (
+      <div key={index}>
+        <span className="font-semibold capitalize">{line.speaker}: </span>
+        <span className="text-muted-foreground">{line.line}</span>
+      </div>
+    ))
+  ) : (
+    <p className="text-muted-foreground">Transcript not available.</p>
+  )}
+</div>
+
             </div>
           </div>
         )}

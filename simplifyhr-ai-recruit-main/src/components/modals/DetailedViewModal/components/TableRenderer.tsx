@@ -8,6 +8,7 @@ import { ApplicationsTable } from '../tables/ApplicationsTable';
 import { MyApplicationsTable } from '../tables/MyApplicationsTable';
 import { MyInterviewsTable } from '../tables/MyInterviewsTable';
 import { InterviewsTable } from '../tables/InterviewsTable'; // <-- ADD THIS IMPORT
+import { CandidateApplicationsTable } from '../tables/candidateApplicationsTable';
 interface TableRendererProps {
   type: DataType;
   data: any[];
@@ -38,7 +39,8 @@ export const TableRenderer = ({ type, data, onEdit , onView }: TableRendererProp
     case 'my-applications':
     case 'in-review':
       // We can reuse the same table component for both
-      return <ApplicationsTable data={data} onEdit={onEdit} hideCandidateColumn={true} />;
+      // return <ApplicationsTable data={data} onEdit={onEdit} hideCandidateColumn={true} />;
+       return <CandidateApplicationsTable data={data} />;
 
     case 'my-interviews':
       return <MyInterviewsTable data={data} />;

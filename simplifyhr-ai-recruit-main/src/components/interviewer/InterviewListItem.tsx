@@ -6,16 +6,6 @@ import { Badge } from "@/components/ui/badge";
 // We add Briefcase and Video icons
 import { Calendar, User, Briefcase, Eye, Video } from 'lucide-react';
 
-// Update the interface to include the new properties
-// interface Interview {
-//   id: string;
-//   scheduled_at: string;
-//   status: string;
-//   job_title: string;
-//   candidate_name: string;
-//   round_type: string;
-//   meeting_url: string | null;
-// }
 
 interface Interview {
   id: string;
@@ -52,11 +42,13 @@ export const InterviewListItem = ({ interview, onViewDetails }: InterviewListIte
   const startTime = new Date(interview.raw_scheduled_at);
   const duration = interview.duration_minutes || 60; // Default to 60 mins if not provided
   const endTime = new Date(startTime.getTime() + duration * 60000);
-  const isHappeningNow = startTime <= now && endTime >= now;
+  const isHappeningNow =  interview.status === 'scheduled' && startTime <= now && endTime >= now;
   // --- END: ADD THIS NEW LOGIC ---
  const joinableWindowStart = new Date(startTime.getTime() - 15 * 60000);
   const joinableWindowEnd = new Date(endTime.getTime() + 15 * 60000);
   const isJoinable = now >= joinableWindowStart && now <= joinableWindowEnd;
+
+  const showJoinButton = interview.meeting_urls?.primary && interview.status === 'scheduled'&& now >= joinableWindowStart  && now <= joinableWindowEnd;
 
   return (
     <Card className={`p-4 hover:shadow-lg transition-shadow duration-300 ${isHappeningNow ? 'border-green-500 shadow-lg shadow-green-500/10' : ''}`}>
@@ -114,7 +106,8 @@ export const InterviewListItem = ({ interview, onViewDetails }: InterviewListIte
           <div className="flex space-x-2 w-full sm:w-auto">
             
             {/* The button now uses the correct meeting_urls.primary field */}
-           {interview.meeting_urls?.primary && isJoinable && (
+           {/* Show the Join button ONLY if the criteria are met */}
+            {showJoinButton && (
               <Button asChild size="sm" variant={isHappeningNow ? "default" : "outline"} className="flex-1">
                 <a href={interview.meeting_urls.primary} target="_blank" rel="noopener noreferrer">
                   <Video className="w-4 h-4 mr-2" />

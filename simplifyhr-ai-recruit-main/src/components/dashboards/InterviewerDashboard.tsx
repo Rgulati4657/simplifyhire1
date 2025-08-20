@@ -817,7 +817,7 @@
 // src/components/dashboards/InterviewerDashboard.tsx
 
 // --- NEW: Import necessary components for the modal and availability selector ---
-import { useState, useEffect } from 'react';
+import { useState, useEffect ,useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
 import { AvailabilitySelector } from '@/components/ui/AvailabilitySelector';
@@ -942,30 +942,29 @@ const [availabilityData, setAvailabilityData] = useState<any | null>(null);
 // In InterviewerDashboard.tsx, replace the existing useEffect with this one:
 // In InterviewerDashboard.tsx
 
-useEffect(() => {
-    
+
 // const fetchInterviewerData = async () => {
-//     // We still check for profile to ensure the user is logged in
-//     if (!profile?.id) return;
-//     setLoading(true);
-
-//     try {
-//       // Call the database function directly. No RLS issues, no complex joins.
-//       // NOTE: This assumes you have already run the updated SQL to include duration_minutes.
-//       const { data, error } = await supabase.rpc('get_my_interviewer_schedules');
-
-//       if (error) {
-//         console.error("Error calling RPC function:", error);
-//         throw error;
-//       }
-
-//       // The data comes back perfectly formatted from the database.
-//       // Now, we just process it for display.
-//       const now = new Date();
-//       const allFormattedInterviews = data.map(item => ({
-//         id: item.interview_id,
-//         raw_scheduled_at: item.scheduled_at,
-//         scheduled_at: new Date(item.scheduled_at).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' }),
+  //     // We still check for profile to ensure the user is logged in
+  //     if (!profile?.id) return;
+  //     setLoading(true);
+  
+  //     try {
+    //       // Call the database function directly. No RLS issues, no complex joins.
+    //       // NOTE: This assumes you have already run the updated SQL to include duration_minutes.
+    //       const { data, error } = await supabase.rpc('get_my_interviewer_schedules');
+    
+    //       if (error) {
+      //         console.error("Error calling RPC function:", error);
+      //         throw error;
+      //       }
+      
+      //       // The data comes back perfectly formatted from the database.
+      //       // Now, we just process it for display.
+      //       const now = new Date();
+      //       const allFormattedInterviews = data.map(item => ({
+        //         id: item.interview_id,
+        //         raw_scheduled_at: item.scheduled_at,
+        //         scheduled_at: new Date(item.scheduled_at).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' }),
 //         status: item.status,
 //         meeting_urls: item.meeting_urls,
 //         job_title: item.job_title,
@@ -977,49 +976,49 @@ useEffect(() => {
 //       const gracePeriodMinutes = 30; // Keep showing for 30 minutes after it should have ended
 
 //       const upcoming = allFormattedInterviews.filter(interview => {
-//           const startTime = new Date(interview.raw_scheduled_at);
-//           const duration = interview.duration_minutes || 60; // Default to 60 mins if duration is null
-//           const endTime = new Date(startTime.getTime() + duration * 60000);
-//           const cutoffTime = new Date(endTime.getTime() + gracePeriodMinutes * 60000);
+  //           const startTime = new Date(interview.raw_scheduled_at);
+  //           const duration = interview.duration_minutes || 60; // Default to 60 mins if duration is null
+  //           const endTime = new Date(startTime.getTime() + duration * 60000);
+  //           const cutoffTime = new Date(endTime.getTime() + gracePeriodMinutes * 60000);
+  
+  //           // Show if it's scheduled AND the cutoff time (end + grace period) has not passed yet
+  //           return interview.status === 'scheduled' && cutoffTime >= now;
+  //       });
+  
+  //       const past = allFormattedInterviews.filter(interview => {
+    //           const startTime = new Date(interview.raw_scheduled_at);
+    //           const duration = interview.duration_minutes || 60;
+    //           const endTime = new Date(startTime.getTime() + duration * 60000);
+    //           const cutoffTime = new Date(endTime.getTime() + gracePeriodMinutes * 60000);
+    
+    //           // Show if it's NOT scheduled OR if the cutoff time has passed
+    //           return interview.status !== 'scheduled' || cutoffTime < now;
+    //       });
+    //       // --- END: CHANGE #2 ---
+    
+    //       setInterviews(upcoming);
+    //       setPastInterviews(past.sort((a, b) => new Date(b.raw_scheduled_at).getTime() - new Date(a.raw_scheduled_at).getTime()));
+    //       setCalendarInterviews([
+      //         ...upcoming.map(i => ({ ...i, isPast: false })),
+      //         ...past.map(i => ({ ...i, isPast: true })),
+      //       ]);
+      
+      //     } catch (err: any) {
+        //       toast({ title: "Error Fetching Interviews", description: err.message, variant: "destructive" });
+        //       console.error(err);
+        //     } finally {
+          //       setLoading(false);
+          //     }
+          // };
           
-//           // Show if it's scheduled AND the cutoff time (end + grace period) has not passed yet
-//           return interview.status === 'scheduled' && cutoffTime >= now;
-//       });
-
-//       const past = allFormattedInterviews.filter(interview => {
-//           const startTime = new Date(interview.raw_scheduled_at);
-//           const duration = interview.duration_minutes || 60;
-//           const endTime = new Date(startTime.getTime() + duration * 60000);
-//           const cutoffTime = new Date(endTime.getTime() + gracePeriodMinutes * 60000);
-          
-//           // Show if it's NOT scheduled OR if the cutoff time has passed
-//           return interview.status !== 'scheduled' || cutoffTime < now;
-//       });
-//       // --- END: CHANGE #2 ---
-
-//       setInterviews(upcoming);
-//       setPastInterviews(past.sort((a, b) => new Date(b.raw_scheduled_at).getTime() - new Date(a.raw_scheduled_at).getTime()));
-//       setCalendarInterviews([
-//         ...upcoming.map(i => ({ ...i, isPast: false })),
-//         ...past.map(i => ({ ...i, isPast: true })),
-//       ]);
-
-//     } catch (err: any) {
-//       toast({ title: "Error Fetching Interviews", description: err.message, variant: "destructive" });
-//       console.error(err);
-//     } finally {
-//       setLoading(false);
-//     }
-// };
-   
-const fetchInterviewerData = async () => {
+const fetchInterviewerData = useCallback( async () => {
     if (!profile?.id) return;
     setLoading(true);
-
+    
     try {
       const { data, error } = await supabase.rpc('get_my_interviewer_schedules');
       if (error) throw error;
-
+      
       const allFormattedInterviews = data.map(item => ({
         id: item.interview_id,
         raw_scheduled_at: item.scheduled_at, // Crucial for accurate date comparisons
@@ -1033,43 +1032,53 @@ const fetchInterviewerData = async () => {
 
       const now = new Date();
       const gracePeriodMinutes = 30;
-
+      
       // Correctly separate upcoming vs past
       const upcoming = allFormattedInterviews.filter(interview => {
-          const startTime = new Date(interview.raw_scheduled_at);
-          const duration = interview.duration_minutes || 60;
-          const endTimeWithGrace = new Date(startTime.getTime() + (duration + gracePeriodMinutes) * 60000);
-          return interview.status === 'scheduled' && endTimeWithGrace >= now;
+        const startTime = new Date(interview.raw_scheduled_at);
+        const duration = interview.duration_minutes || 60;
+        const endTimeWithGrace = new Date(startTime.getTime() + (duration + gracePeriodMinutes) * 60000);
+        return interview.status === 'scheduled' && endTimeWithGrace >= now;
       });
-
+      
       const past = allFormattedInterviews.filter(interview => {
-          const startTime = new Date(interview.raw_scheduled_at);
-          const duration = interview.duration_minutes || 60;
-          const endTimeWithGrace = new Date(startTime.getTime() + (duration + gracePeriodMinutes) * 60000);
-          return interview.status !== 'scheduled' || endTimeWithGrace < now;
+        const startTime = new Date(interview.raw_scheduled_at);
+        const duration = interview.duration_minutes || 60;
+        const endTimeWithGrace = new Date(startTime.getTime() + (duration + gracePeriodMinutes) * 60000);
+        return interview.status !== 'scheduled' || endTimeWithGrace < now;
       });
-
+      
       setInterviews(upcoming);
       setPastInterviews(past.sort((a, b) => new Date(b.raw_scheduled_at).getTime() - new Date(a.raw_scheduled_at).getTime()));
       
       // The calendar should receive ALL interviews
       const allCalendarEvents = allFormattedInterviews.map(interview => {
-          const startTime = new Date(interview.raw_scheduled_at);
-          const duration = interview.duration_minutes || 60;
-          const endTime = new Date(startTime.getTime() + duration * 60000);
-          return { ...interview, isPast: endTime < now };
+        const startTime = new Date(interview.raw_scheduled_at);
+        const duration = interview.duration_minutes || 60;
+        const endTime = new Date(startTime.getTime() + duration * 60000);
+        return { ...interview, isPast: endTime < now };
       });
       setCalendarInterviews(allCalendarEvents);
-
+      
     } catch (err: any) {
       toast({ title: "Error Fetching Interviews", description: err.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
-};
-
-fetchInterviewerData();
 }, [profile, supabase, toast]);
+
+useEffect(() => {
+    // Fetch the initial data when the component mounts
+    fetchInterviewerData();
+},[fetchInterviewerData]);
+
+
+
+const refetchData = useCallback(() => {
+    fetchInterviewerData();
+}, [profile, supabase, toast]); 
+
+
   const handleViewDetails = (interviewId: string) => {
     setViewingInterviewId(interviewId);
   };
@@ -1232,6 +1241,7 @@ fetchInterviewerData();
         open={!!viewingInterviewId}
         onOpenChange={(isOpen) => !isOpen && setViewingInterviewId(null)}
         onViewJob={(jobId) => setViewingJobId(jobId)}
+        onFeedbackSubmitted={refetchData}
       />
       <ViewJobModal
         jobId={viewingJobId}

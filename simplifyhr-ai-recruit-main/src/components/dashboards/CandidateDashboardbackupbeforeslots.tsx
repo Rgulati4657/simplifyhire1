@@ -876,18 +876,28 @@ const fetchCandidateData = async () => {
         onOpenChange={(open) => setDetailModal(prevState => ({ ...prevState, open }))}
         title={detailModal.title}
 
-        initialData={
-    // If the modal is for 'my-applications', give it the full 'applications' array
-    detailModal.type === 'my-applications' 
-      ? applications 
-    
-    // If the modal is for 'in-review', give it a pre-filtered version of the 'applications' array
-    : detailModal.type === 'in-review' 
-      ? applications.filter(app => ['applied','screening', 'interviewing', 'testing'].includes(app.status))
-    
-    // For 'my-interviews', we don't have the data yet, so we pass nothing.
-    // The modal will then perform its own fetch for this case.
-    : undefined 
+       initialData={
+    (() => {
+      // Use an Immediately Invoked Function Expression (IIFE) for clear, safe logic.
+      switch (detailModal.type) {
+        case 'my-applications':
+          // Explicitly return the full applications list.
+          return applications;
+        
+        case 'in-review':
+          // Explicitly return the pre-filtered list.
+          // These are the statuses that match your stat card calculation.
+          const inReviewStatuses = ['applied', 'screening', 'interview'];
+          return applications.filter(app => inReviewStatuses.includes(app.status));
+
+        case 'my-interviews':
+          // The hook will fetch this data itself.
+          return undefined;
+
+        default:
+          return undefined;
+      }
+    })()
   }
       />
 

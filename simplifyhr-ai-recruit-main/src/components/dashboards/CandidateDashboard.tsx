@@ -5,7 +5,6 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import DetailedViewModal from '@/components/modals/DetailedViewModal';
 import { 
   Search, 
   Briefcase, 
@@ -28,7 +27,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 // import { AvailabilitySelector } from '@/components/ui/AvailabilitySelector';
 import { EnhancedAvailabilitySelector } from '@/components/ui/EnhancedAvailabilitySelector';
-
+import DetailedViewModal from '@/components/modals/DetailedViewModal';
+import { CandidateDetailModal } from '@/components/modals/CandidateDetailModal';
+import { useCandidateViewData } from '@/components/modals/DetailedViewModal/hooks/useCandidateViewData';
 // --- INTEGRATION STEP 2: Define the types needed for our new component's data structure. ---
 // interface SlotRange {
 //   start: string;
@@ -56,6 +57,8 @@ const CandidateDashboard = () => {
     open: false,
     title: ''
   });
+
+    const [modalKey, setModalKey] = useState(0);
 
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -87,6 +90,8 @@ const openDetailModal = (type: 'my-applications' | 'in-review' | 'my-interviews'
   console.log("Requesting modal state update to:", { type, open: true, title });
   // setDetailModal(prevState => ({ ...prevState, type, open: true, title }));
    setDetailModal({ type, open: true, title });
+
+    setModalKey(prevKey => prevKey + 1);
 };
 
   // const fetchCandidateData = async () => {
@@ -539,6 +544,40 @@ const fetchCandidateData = async () => {
     }
   };
 
+  
+  // --- START: THIS IS THE NEW LOGIC THAT CONNECTS EVERYTHING ---
+
+  // 1. We call the NEW hook dedicated to the candidate's modal.
+  const {
+    filteredData,
+    loading: modalLoading, // Rename to avoid conflict with dashboard's `loading` state
+    searchTerm,
+    filterValue,
+    setSearchTerm,
+    setFilterValue,
+  } = useCandidateViewData(
+    detailModal.type,
+    detailModal.open,
+    applications,
+    // This logic you wrote is perfect for passing pre-filtered data.
+    detailModal.type === 'my-applications'
+      ? applications
+    : detailModal.type === 'in-review'
+      ? applications.filter(app => ['applied', 'screening', 'interview', 'selected'].includes(app.status)) // Updated statuses
+    : undefined
+  );
+  
+  // --- END: NEW LOGIC ---
+   useEffect(() => {
+    if (detailModal.open) {
+      console.log('--- MODAL DATA VERIFICATION ---');
+      console.log('Modal Type:', detailModal.type);
+      console.log('Data being passed to modal:', filteredData);
+      console.log('Total Records:', filteredData.length);
+      console.log('-----------------------------');
+    }
+  }, [filteredData, detailModal.open, detailModal.type]);
+
   return (
     <>
     <DashboardLayout title="Candidate Dashboard" actions={dashboardActions}>
@@ -833,6 +872,11 @@ const fetchCandidateData = async () => {
                     const endTime = new Date(startTime.getTime() + duration * 60000);
                     const isHappeningNow = startTime <= now && endTime >= now;
 
+                    const joinableWindowStart = new Date(startTime.getTime() - 15 * 60000);
+                    const joinableWindowEnd = new Date(endTime.getTime() + 15 * 60000);
+                    
+                    const showJoinButton = interview.meeting_urls?.primary && now >= joinableWindowStart && now <= joinableWindowEnd;
+
                     return (
                       <div 
                         key={interview.interview_id} 
@@ -849,7 +893,8 @@ const fetchCandidateData = async () => {
                           {isHappeningNow && <Badge variant="destructive">Live Now</Badge>}
                         </div>
                         
-                        {interview.meeting_urls?.primary && (
+                        {/* {interview.meeting_urls?.primary && ( */}
+                        {showJoinButton && (
                           <Button asChild variant={isHappeningNow ? "default" : "outline"} size="sm" className="w-full mt-2">
                             <a href={interview.meeting_urls.primary} target="_blank" rel="noopener noreferrer">
                               Join Interview
@@ -967,25 +1012,36 @@ const fetchCandidateData = async () => {
     </DashboardLayout>
      {/* --- THIS IS THE CRUCIAL PART THAT WAS MISSING --- */}
       {/* It renders the modal, which listens for the 'open' state to change. */}
-      <DetailedViewModal
+      {/* <DetailedViewModal
+      // key={modalKey}
         type={detailModal.type}
         open={detailModal.open}
         onOpenChange={(open) => setDetailModal(prevState => ({ ...prevState, open }))}
         title={detailModal.title}
 
-        initialData={
-    // If the modal is for 'my-applications', give it the full 'applications' array
-    detailModal.type === 'my-applications' 
-      ? applications 
+  //       initialData={
+  //   detailModal.type === 'my-applications' 
+  //     ? applications 
     
-    // If the modal is for 'in-review', give it a pre-filtered version of the 'applications' array
-    : detailModal.type === 'in-review' 
-      ? applications.filter(app => ['applied','screening', 'interviewing', 'testing'].includes(app.status))
+  //   // --- THIS IS THE FINAL, CORRECTED LINE ---
+  //   : detailModal.type === 'in-review' 
+  //     ? applications.filter(app => ['applied', 'screening', 'interview'].includes(app.status))
+  //   // We use the REAL statuses from your database enum.
     
-    // For 'my-interviews', we don't have the data yet, so we pass nothing.
-    // The modal will then perform its own fetch for this case.
-    : undefined 
-  }
+  //   : undefined 
+  // }
+  data={filteredData} // The component expects a prop named 'data'
+        loading={modalLoading}
+        searchTerm={searchTerm}
+        filterValue={filterValue}
+        onSearchChange={setSearchTerm}
+        // onFilterChange={setFilterValue}
+      /> */}
+      <CandidateDetailModal
+        type={detailModal.type}
+        open={detailModal.open}
+        onOpenChange={(open) => setDetailModal(prevState => ({ ...prevState, open }))}
+        title={detailModal.title}
       />
 
       {/* --- NEW: The Availability Selector Modal for Candidates --- */}

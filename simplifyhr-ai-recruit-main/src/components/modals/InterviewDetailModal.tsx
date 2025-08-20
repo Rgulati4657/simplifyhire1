@@ -14,30 +14,9 @@ interface InterviewDetailModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onViewJob: (jobId: string) => void; // <-- Add this prop
+  onFeedbackSubmitted: () => void;
 }
 
-// Define the shape of the detailed data we will fetch
-// interface DetailedInterview {
-//   id: string;
-//   status: string;
-//   scheduled_at: string;
-//   meeting_url: string;
-//   candidate_name: string;
-//   candidate_email: string;
-//   resume_url: string;
-//   job_title: string;
-//   job_description: string;
-//   job_location: string | null; // Add this
-//   job_employment_type: string | null; // Add this
-//   scoring_criteria: string[];
-//   ai_interview_enabled: boolean;
-//   ai_summary: string | null;
-//   transcript: any | null; // JSONB can be any object/array
-//   strengths: any | null;
-//   weaknesses: any | null;
-//   raw_scheduled_at: string; 
-//   has_passed: boolean; // Add this line
-// }
 interface DetailedInterview {
   id: string;
   status: string;
@@ -61,7 +40,7 @@ interface DetailedInterview {
   weaknesses: any | null;
 }
 
-export const InterviewDetailModal = ({ interviewId, open, onOpenChange, onViewJob }: InterviewDetailModalProps) => {
+export const InterviewDetailModal = ({ interviewId, open, onOpenChange, onViewJob , onFeedbackSubmitted}: InterviewDetailModalProps) => {
   const [interviewData, setInterviewData] = useState<DetailedInterview | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -69,6 +48,7 @@ export const InterviewDetailModal = ({ interviewId, open, onOpenChange, onViewJo
 const handleFeedbackSubmitted = () => {
   // For now, we just close the modal.
   // In a more advanced setup, you would also trigger a refetch of the dashboard list.
+   onFeedbackSubmitted();
   onOpenChange(false);
 };
 
@@ -157,8 +137,16 @@ const handleFeedbackSubmitted = () => {
 
         if (error) throw error;
         
+          // --- START: DEBUG LOG 1 ---
+        console.log("DEBUG STEP 1: Raw data from DB function:", data);
+        // --- END: DEBUG LOG 1 ---
+
         // The RPC call returns an array, but we only expect one item
         const details = data?.[0];
+
+
+         console.log("DEBUG STEP 2: 'details' object:", details);
+        console.log("DEBUG STEP 3: 'details.ai_review' object:", details?.ai_review);
 
         if (details) {
           const formattedData = {
@@ -182,9 +170,11 @@ const handleFeedbackSubmitted = () => {
             ai_interview_enabled: details.ai_interview_enabled,
             ai_summary: details.final_ai_review,
             transcript: details.ai_conversation_log,
-            strengths: details.interviewer_scores?.strengths || null,
-            weaknesses: details.interviewer_scores?.weaknesses || null,
+            strengths: details.ai_review?.strengths || null,
+            weaknesses: details.ai_review?.weakness || null,
           };
+           console.log("DEBUG STEP 4: Final 'formattedData' object:", formattedData);
+
           setInterviewData(formattedData as DetailedInterview);
         }
       } catch (err: any) {
@@ -212,124 +202,6 @@ const handleFeedbackSubmitted = () => {
       isTimeInThePast: interviewTimeHasPassed
     });
   }
-
-//   return (
-//     <Dialog open={open} onOpenChange={onOpenChange}>
-//       <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
-//         <DialogHeader>
-//           <DialogTitle className="text-2xl">Interview Details</DialogTitle>
-//           <DialogDescription>
-//             Review all necessary information for the upcoming interview.
-//           </DialogDescription>
-//         </DialogHeader>
-
-//         {loading && <p>Loading details...</p>}
-
-//         {!loading && interviewData && (
-//           <div className="space-y-6 mt-4">
-            
-//             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
-//               {/* --- LEFT COLUMN --- */}
-//               <div className="space-y-6">
-                
-//                 {/* --- THIS IS THE CORRECTED CANDIDATE CARD --- */}
-//                 <div className="p-4 border rounded-lg space-y-2">
-//                   <h3 className="font-semibold flex items-center mb-2"><User className="w-5 h-5 mr-2" /> Candidate Information</h3>
-//                   <p><strong>Name:</strong> {interviewData.candidate_name}</p>
-//                   <p><strong>Email:</strong> {interviewData.candidate_email}</p>
-//                   <p><strong>Phone:</strong> {interviewData.candidate_phone || 'N/A'}</p>
-//                   {interviewData.resume_url && (
-//                     <Button asChild variant="outline" size="sm" className="mt-1">
-//                       <a href={interviewData.resume_url} target="_blank" rel="noopener noreferrer">
-//                         <FileText className="w-4 h-4 mr-2" /> View Resume File
-//                       </a>
-//                     </Button>
-//                   )}
-//                   {/* The scrollable resume text box is now back
-//                   {interviewData.resume_text && (
-//                     <div className="pt-2">
-//                       <Label>Resume Content</Label>
-//                       <div className="mt-1 p-2 border rounded-md h-32 overflow-y-auto bg-muted/50 text-sm">
-//                         <p className="whitespace-pre-wrap">{interviewData.resume_text}</p>
-//                       </div>
-//                     </div>
-//                   )} */}
-//                 </div>
-
-//                 {/* --- THIS IS THE CORRECTED JOB CARD --- */}
-//                 <div className="p-4 border rounded-lg space-y-2">
-//                   <h3 className="font-semibold flex items-center mb-2"><Briefcase className="w-5 h-5 mr-2" /> Job Information</h3>
-//                   <p><strong>Title:</strong> {interviewData.job_title}</p>
-//                   <p><strong>Location:</strong> {interviewData.job_location || 'N/A'}</p>
-//                   <p><strong>Type:</strong> {interviewData.job_employment_type || 'N/A'}</p>
-//                   {/* The link is now a button that can trigger another modal */}
-//                   <Button 
-//                     variant="link" 
-//                     className="p-0 h-auto text-blue-500"
-//                     // In the future, this onClick can open another modal with the full job description
-//                     onClick={() => onViewJob(interviewData.job_id)}
-//                   >
-//                     View full job description
-//                   </Button>
-//                 </div>
-//               </div>
-
-//               {/* --- RIGHT COLUMN --- */}
-//               <div className="space-y-6">
-//                 <div className="p-4 border rounded-lg">
-//                   <h3 className="font-semibold mb-3">Scoring Criteria</h3>
-//                   {interviewData.scoring_criteria.length > 0 ? (
-//                     <ul className="list-disc list-inside space-y-1 text-sm">
-//                       {interviewData.scoring_criteria.map((criterion, index) => (
-//                         <li key={index}>{criterion}</li>
-//                       ))}
-//                     </ul>
-//                   ) : (
-//                     <p className="text-sm text-muted-foreground">No specific scoring criteria defined for this round.</p>
-//                   )}
-//                 </div>
-                
-//                 <Button asChild size="lg" className="w-full">
-//                   <a href={interviewData.meeting_url} target="_blank" rel="noopener noreferrer">
-//                     <LinkIcon className="w-4 h-4 mr-2" /> Join Interview Meeting
-//                   </a>
-//                 </Button>
-//               </div>
-//             </div>
-
-//         {/* AI Analysis Section */}
-//             {/* Show this section if AI was enabled and the summary exists */}
-//             {interviewData.ai_interview_enabled && interviewData.ai_summary && (
-//               <AIAnalysisDisplay 
-//                 summary={interviewData.ai_summary}
-//                 strengths={interviewData.strengths}
-//                 weaknesses={interviewData.weaknesses}
-//                 transcript={interviewData.transcript}
-//               />
-//             )}
-            
-//             {/* Feedback Form Section */}
-//             {/* Show the form if the interview is NOT completed */}
-//             {interviewData.status !== 'completed' ? (
-//               <InterviewFeedbackForm 
-//                 interviewId={interviewData.id}
-//                 onFeedbackSubmitted={handleFeedbackSubmitted}
-//               />
-//             ) : (
-//               // Show a confirmation message if feedback is already submitted
-//               <div className="text-center p-6 border-t mt-6">
-//                 <h3 className="text-lg font-semibold text-green-600">Feedback Submitted</h3>
-//                 <p className="text-muted-foreground">Your evaluation for this interview has been recorded.</p>
-//               </div>
-//             )}
-//             </div>
-//         )}
-//       </DialogContent>
-//     </Dialog>
-//   );
-
-
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -400,7 +272,7 @@ const handleFeedbackSubmitted = () => {
                   )}
                 </div>
                 
-                {(() => {
+                {/* {(() => {
                   const now = new Date();
                   const scheduledTime = new Date(interviewData.raw_scheduled_at);
                   const thirtyMinutesBefore = new Date(scheduledTime.getTime() - 30 * 60000);
@@ -414,19 +286,49 @@ const handleFeedbackSubmitted = () => {
                       </a>
                     </Button>
                   );
+                })()} */}
+
+                                {(() => {
+                  // --- START: CORRECTED LOGIC ---
+                  // Only check the time if the interview is still in a 'scheduled' state.
+                  if (interviewData.status === 'scheduled' || interviewData.status === 'in_progress') {
+                    const now = new Date();
+                    const scheduledTime = new Date(interviewData.raw_scheduled_at);
+                    const thirtyMinutesBefore = new Date(scheduledTime.getTime() - 30 * 60000);
+                    const oneHourAfter = new Date(scheduledTime.getTime() + 60 * 60000);
+                    
+                    // The button should only be visible if a URL exists AND we are within the time window.
+                    const showButton = interviewData.meeting_url && now >= thirtyMinutesBefore && now <= oneHourAfter;
+
+                    if (showButton) {
+                      return (
+                        <Button asChild size="lg" className="w-full">
+                          <a href={interviewData.meeting_url} target="_blank" rel="noopener noreferrer">
+                            <LinkIcon className="w-4 h-4 mr-2" /> Join Interview Meeting
+                          </a>
+                        </Button>
+                      );
+                    }
+                  }
+                  // If the status is 'completed', 'missed', 'in_progress', etc., this function will return nothing,
+                  // and the button will not be rendered.
+                  return null;
+                  // --- END: CORRECTED LOGIC ---
                 })()}
               </div>
             </div>
 
-            {/* AI Analysis Section (No changes here) */}
-            {interviewData.ai_interview_enabled && interviewData.ai_summary && (
+ {console.log("DEBUG STEP 5: Checking render condition. ai_summary:", interviewData?.ai_summary)}
+
+           
+            {/* {interviewData.ai_interview_enabled && interviewData.ai_summary && (
               <AIAnalysisDisplay 
                 summary={interviewData.ai_summary}
                 strengths={interviewData.strengths}
                 weaknesses={interviewData.weaknesses}
                 transcript={interviewData.transcript}
               />
-            )}
+            )} */}
             
             {/* ========================================================== */}
             {/* --- THIS IS THE ONLY SECTION THAT HAS BEEN CHANGED --- */}
@@ -442,18 +344,47 @@ const handleFeedbackSubmitted = () => {
                   );
                 }
 
-                // State 2: Interview is marked as 'awaiting_feedback' (The "Yes" path was chosen).
-                if (interviewData.status === 'awaiting_feedback') {
+                // // State 2: Interview is marked as 'awaiting_feedback' (The "Yes" path was chosen).
+                // if (interviewData.status === 'awaiting_feedback') {
+                //   return (
+                //     <InterviewFeedbackForm 
+                //       interviewId={interviewData.id}
+                //       onFeedbackSubmitted={handleFeedbackSubmitted}
+                //     />
+                //   );
+                // }
+                                // State 2: Interview is marked as 'in_progress' (The "Yes" path was chosen).
+                // NOTE: We should check for 'in_progress' here as well, based on our last fix.
+                if (interviewData.status === 'in_progress' || interviewData.status === 'awaiting_feedback') {
                   return (
-                    <InterviewFeedbackForm 
-                      interviewId={interviewData.id}
-                      onFeedbackSubmitted={handleFeedbackSubmitted}
-                    />
+                    // Add a wrapper to handle spacing between the two components
+                    <div className="space-y-6 pt-4 border-t">
+
+                      {/* --- START: PASTE THE AI BLOCK HERE --- */}
+                      {(interviewData.ai_summary || interviewData.strengths || interviewData.weaknesses) && (
+                        <div>
+                          {/* You can add a title here if you like */}
+                          {/* <h3 className="text-lg font-semibold text-center mb-4">AI Co-Pilot Analysis</h3> */}
+                          <AIAnalysisDisplay 
+                            summary={interviewData.ai_summary}
+                            strengths={interviewData.strengths}
+                            weaknesses={interviewData.weaknesses}
+                            transcript={interviewData.transcript}
+                          />
+                        </div>
+                      )}
+                      {/* --- END: PASTE THE AI BLOCK HERE --- */}
+
+                      <InterviewFeedbackForm 
+                        interviewId={interviewData.id}
+                        onFeedbackSubmitted={handleFeedbackSubmitted}
+                      />
+                    </div>
                   );
                 }
 
                 // State 3: Interview was marked as missed.
-                 if (interviewData.status === 'missed') {
+                 if (interviewData.status === 'missed'|| interviewData.status === 'no_show') {
                    return (
                     <div className="text-center p-6 border-t mt-6">
                       <h3 className="text-lg font-semibold text-orange-600">Interview Marked as Missed</h3>
@@ -473,56 +404,42 @@ const handleFeedbackSubmitted = () => {
                         Please confirm if this interview took place as scheduled.
                       </p>
                       <div className="flex justify-center space-x-4 mt-4">
-                                                <Button
+                                                                      <Button
                           variant="outline"
                           onClick={async () => {
+                            // --- START: CORRECTED "NO" BUTTON LOGIC ---
                             if (!interviewData?.id) return;
-                            await supabase
-                              .from('interview_schedules') // <-- CORRECT TABLE
-                              .update({ status: 'missed' })
-                              .eq('id', interviewData.id);
-                            onOpenChange(false); // Closing the modal is fine here, as no further action is needed
+                            const { error } = await supabase.rpc('update_interview_status_by_interviewer', {
+                              schedule_id: interviewData.id,
+                              new_status: 'no_show' // Using your correct enum
+                            });
+
+                            if (error) {
+                              // Add a toast here for better UX
+                              console.error("Failed to update status:", error);
+                              return;
+                            }
+
+                            // --- THIS IS THE FIX ---
+                            // 1. Call the function from the parent to refetch all dashboard data.
+                            onFeedbackSubmitted();
+                            // 2. Then close the modal.
+                            onOpenChange(false);
                           }}
                         >
                           No, it was missed
                         </Button>
-                        {/* <Button
-                          variant="outline"
-                          onClick={async () => {
-                            // The "NO" button logic
-                            await supabase
-                              .from('interview_participants')
-                              .update({ status: 'missed' })
-                              .eq('id', interviewData.id);
-                            onOpenChange(false); // Close modal and refetch data
-                          }}
-                        >
-                          No, it was missed
-                        </Button> */}
-                        {/* <Button
-                          onClick={async () => {
-                            // The "YES" button logic
-                            await supabase
-                              .from('interview_participants')
-                              .update({ status: 'awaiting_feedback' })
-                              .eq('id', interviewData.id);
-                            // To see the change immediately, we should refetch the data.
-                            // The simplest way is to close and let the user reopen.
-                            onOpenChange(false);
-                          }}
-                        >
-                          Yes, unlock feedback form
-                        </Button> */}
+                       
                                                 <Button
                           onClick={async () => {
                             // --- START: CORRECTED "YES" BUTTON LOGIC ---
                             if (!interviewData?.id) return; // Safety check
 
                             // 1. Update the correct table to change the status.
-                            const { error } = await supabase
-                              .from('interview_schedules') // <-- THE CORRECT TABLE
-                              .update({ status: 'awaiting_feedback' })
-                              .eq('id', interviewData.id);
+                            const { error } = await supabase.rpc('update_interview_status_by_interviewer', {
+                              schedule_id: interviewData.id,
+                              new_status: 'in_progress'
+                            });
 
                             if (error) {
                               // You should add a toast notification here for a better user experience
@@ -534,7 +451,7 @@ const handleFeedbackSubmitted = () => {
                             //    so the feedback form appears instantly without needing to reopen.
                             setInterviewData(prevData => {
                               if (!prevData) return null;
-                              return { ...prevData, status: 'awaiting_feedback' };
+                              return { ...prevData, status: 'in_progress' };
                             });
                             // --- END: CORRECTED "YES" BUTTON LOGIC ---
                           }}

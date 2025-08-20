@@ -78,9 +78,9 @@ export const FILTER_OPTIONS: Record<DataType, FilterOption[]> = {
     { value: 'all', label: 'All Statuses' },
     { value: 'scheduled', label: 'Scheduled' },
     { value: 'completed', label: 'Completed' },
-    { value: 'canceled', label: 'Canceled' },
-    { value: 'rescheduled', label: 'Rescheduled' },
-    { value: 'missed', label: 'Missed' }
+    { value: 'cancelled', label: 'Cancelled' },
+    { value: 'in_progress', label: 'In Progress' },
+    { value: 'no_show', label: 'Missed' }
   ],
   
 };
