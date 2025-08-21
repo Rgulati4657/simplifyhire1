@@ -149,18 +149,34 @@ const OfferTemplateManager = ({ trigger, onTemplateUploaded }: OfferTemplateMana
 
       if (uploadError) {
         console.error('Storage upload error:', uploadError);
+        if (uploadError.message === "Bucket not found") {
+          toast({
+            title: "Storage bucket missing",
+            description: "Please run the create_storage_bucket.sql script in your Supabase dashboard first",
+            variant: "destructive",
+          });
+        }
         throw uploadError;
       }
 
-      // Create template record with actual schema fields only
+      // Since company_id is required but may not be properly set up,
+      // we'll use the user's profile ID as a fallback company_id
+      // This is a temporary solution until proper company management is implemented
+      const companyId = profile.id;
+
+      // For now, store just the file path as string (as per current types)  
+      const templateContent = uploadData.path;
+
+      // Create template record with company_id
       const { data: template, error: templateError } = await supabase
         .from('offer_templates')
         .insert({
           template_name: selectedFile.name,
-          template_content: uploadData.path,
+          template_content: templateContent,
           created_by: profile.id,
+          company_id: companyId,
           country: 'Indonesia',
-          job_role: selectedRole,
+          job_role: selectedRole || 'General',
           is_validated: false
         })
         .select()

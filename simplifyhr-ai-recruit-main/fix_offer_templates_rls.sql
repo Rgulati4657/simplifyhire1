@@ -41,9 +41,21 @@ ON public.offer_templates FOR DELETE
 USING (auth.uid() = created_by);
 
 -- Enable RLS on storage bucket for offer-templates
-INSERT INTO storage.buckets (id, name, public) 
-VALUES ('offer-templates', 'offer-templates', false)
-ON CONFLICT (id) DO NOTHING;
+-- First ensure the bucket exists
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types) 
+VALUES ('offer-templates', 'offer-templates', false, 52428800, 
+  ARRAY['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'])
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  public = EXCLUDED.public,
+  file_size_limit = EXCLUDED.file_size_limit,
+  allowed_mime_types = EXCLUDED.allowed_mime_types;
+
+-- Drop existing storage policies first
+DROP POLICY IF EXISTS "Users can upload their own offer templates" ON storage.objects;
+DROP POLICY IF EXISTS "Users can view their own offer templates" ON storage.objects;
+DROP POLICY IF EXISTS "Users can update their own offer templates" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete their own offer templates" ON storage.objects;
 
 -- Storage policies for offer-templates bucket
 CREATE POLICY "Users can upload their own offer templates" 
