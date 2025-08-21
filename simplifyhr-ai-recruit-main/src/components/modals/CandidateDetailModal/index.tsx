@@ -5,7 +5,9 @@ import { LoadingState } from '../DetailedViewModal/components/LoadingState';
 import { CandidateFilterControls } from './components/CandidateFilterControls';
 import { DataType } from '../DetailedViewModal/types';
 import { useMemo } from 'react';
-
+import { PaginationControls } from "@/components/ui/PaginationControls";
+// import { useCandidateViewData } from '../DetailedViewModal/hooks/useCandidateViewData'; 
+// import { useCandidateViewData } from "@/components/modals/DetailedViewModal/hooks/useCandidateViewData";
 // --- DEFINE YOUR FILTER LISTS HERE ---
 const allApplicationStatuses = [
     { value: 'applied', label: 'Applied' },
@@ -32,12 +34,16 @@ const interviewFilterOptions = [
 
 export const CandidateDetailModal = ({ type, open, onOpenChange, title }: any) => {
   const {
-    filteredData,
+     paginatedData,
     loading,
     searchTerm,
     setSearchTerm,
     filterValue,
-    setFilterValue
+    setFilterValue,
+    currentPage,
+    totalPages,
+    onPageChange,
+    totalRecords
   } = useCandidateViewData(type, open);
 
   // --- THIS LOGIC CHOOSES THE CORRECT LIST ---
@@ -65,7 +71,7 @@ export const CandidateDetailModal = ({ type, open, onOpenChange, title }: any) =
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            Total records: {filteredData.length}
+            Total records: {totalRecords}
           </DialogDescription>
         </DialogHeader>
         
@@ -79,13 +85,20 @@ export const CandidateDetailModal = ({ type, open, onOpenChange, title }: any) =
         />
 
         <div className="border rounded-lg overflow-auto max-h-[60vh]">
-          <LoadingState loading={loading} hasData={filteredData.length > 0}>
+          <LoadingState loading={loading} hasData={paginatedData.length > 0}>
             <TableRenderer 
               type={type} 
-              data={filteredData}
+              data={paginatedData}
             />
           </LoadingState>
         </div>
+         {/* --- 3. RENDER THE PAGINATION CONTROLS AT THE BOTTOM --- */}
+        <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={onPageChange}
+        />
+
       </DialogContent>
     </Dialog>
   );

@@ -12,13 +12,13 @@ export const PaginationControls = ({
   totalPages,
   onPageChange,
 }: PaginationControlsProps) => {
-  // Don't render if there's only one page or no pages
+  // Don't render the controls if there's only one page or no data.
   if (totalPages <= 1) {
     return null;
   }
 
   return (
-    <div className="flex items-center justify-end space-x-2 p-4 border-t">
+    <div className="flex items-center justify-end space-x-2 p-4 border-t bg-background">
       <div className="flex items-center space-x-1">
         <Button
           variant="outline"
@@ -26,6 +26,7 @@ export const PaginationControls = ({
           onClick={() => onPageChange(1)}
           disabled={currentPage === 1}
         >
+          <span className="sr-only">Go to first page</span>
           <ChevronsLeft className="h-4 w-4" />
         </Button>
         <Button
@@ -34,6 +35,7 @@ export const PaginationControls = ({
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
         >
+          <span className="sr-only">Go to previous page</span>
           <ChevronLeft className="h-4 w-4" />
         </Button>
       </div>
@@ -47,6 +49,7 @@ export const PaginationControls = ({
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
         >
+          <span className="sr-only">Go to next page</span>
           <ChevronRight className="h-4 w-4" />
         </Button>
         <Button
@@ -55,6 +58,7 @@ export const PaginationControls = ({
           onClick={() => onPageChange(totalPages)}
           disabled={currentPage === totalPages}
         >
+          <span className="sr-only">Go to last page</span>
           <ChevronsRight className="h-4 w-4" />
         </Button>
       </div>

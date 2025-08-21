@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect,useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 // import { ApplicationDetailModal } from '@/components/modals/ApplicationDetailModal';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { 
   Search, 
@@ -24,12 +25,13 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 // import { AvailabilitySelector } from '@/components/ui/AvailabilitySelector';
 import { EnhancedAvailabilitySelector } from '@/components/ui/EnhancedAvailabilitySelector';
 import DetailedViewModal from '@/components/modals/DetailedViewModal';
 import { CandidateDetailModal } from '@/components/modals/CandidateDetailModal';
-import { useCandidateViewData } from '@/components/modals/DetailedViewModal/hooks/useCandidateViewData';
+import { PaginationControls } from '../ui/PaginationControls';
+// import { useCandidateViewData } from '@/components/modals/DetailedViewModal/hooks/useCandidateViewData';
 // --- INTEGRATION STEP 2: Define the types needed for our new component's data structure. ---
 // interface SlotRange {
 //   start: string;
@@ -79,11 +81,73 @@ const [upcomingInterviews, setUpcomingInterviews] = useState<any[]>([]); // <-- 
    const [isFetchingSlots, setIsFetchingSlots] = useState(false);
 
 
+    const [mainListSearchTerm, setMainListSearchTerm] = useState('');
+  const [mainListCurrentPage, setMainListCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 5; // Let's show 5 applications per page on the dashboard
+
+
   useEffect(() => {
     if (profile?.id) {
       fetchCandidateData();
     }
   }, [profile]);
+
+
+  const { paginatedApplications, totalPages } = useMemo(() => {
+    let processedData = [...applications];
+
+    if (mainListSearchTerm) {
+        const lowercasedTerm = mainListSearchTerm.toLowerCase();
+        processedData = processedData.filter(app => {
+            const title = app.jobs?.title?.toLowerCase() || '';
+            const company = app.jobs?.companies?.name?.toLowerCase() || '';
+            return title.includes(lowercasedTerm) || company.includes(lowercasedTerm);
+        });
+    }
+    
+    const calculatedTotalPages = Math.ceil(processedData.length / ITEMS_PER_PAGE);
+
+    const startIndex = (mainListCurrentPage - 1) * ITEMS_PER_PAGE;
+    const paginatedItems = processedData.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+    return { paginatedApplications: paginatedItems, totalPages: calculatedTotalPages };
+}, [applications, mainListSearchTerm, mainListCurrentPage]);
+
+  //  const paginatedApplications = useMemo(() => {
+  //   let processedData = [...applications];
+
+  //   // First, apply the search filter
+  //   if (mainListSearchTerm) {
+  //     const lowercasedTerm = mainListSearchTerm.toLowerCase();
+  //     processedData = processedData.filter(app => {
+  //       // You can define what's searchable here
+  //       const title = app.jobs?.title?.toLowerCase() || '';
+  //       const company = app.jobs?.companies?.name?.toLowerCase() || '';
+  //       return title.includes(lowercasedTerm) || company.includes(lowercasedTerm);
+  //     });
+  //   }
+
+  //   // Then, calculate pagination on the filtered data
+  //   const startIndex = (mainListCurrentPage - 1) * ITEMS_PER_PAGE;
+  //   return processedData.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  // }, [applications, mainListSearchTerm, mainListCurrentPage]);
+
+  // // We also need the total page count for the pagination controls
+  // const totalPages = useMemo(() => {
+  //    // This calculation must also be based on the filtered list
+  //   let processedData = [...applications];
+  //   if (mainListSearchTerm) {
+  //       const lowercasedTerm = mainListSearchTerm.toLowerCase();
+  //       processedData = processedData.filter(app => {
+  //           const title = app.jobs?.title?.toLowerCase() || '';
+  //           const company = app.jobs?.companies?.name?.toLowerCase() || '';
+  //           return title.includes(lowercasedTerm) || company.includes(lowercasedTerm);
+  //       });
+  //   }
+  //   return Math.ceil(processedData.length / ITEMS_PER_PAGE);
+  // }, [applications, mainListSearchTerm]);
+
+
 
 // TO THIS (Functional update form)
 const openDetailModal = (type: 'my-applications' | 'in-review' | 'my-interviews', title: string) => {
@@ -93,273 +157,6 @@ const openDetailModal = (type: 'my-applications' | 'in-review' | 'my-interviews'
 
     setModalKey(prevKey => prevKey + 1);
 };
-
-  // const fetchCandidateData = async () => {
-  //   try {
-  //     console.log('Fetching candidate data for user:', profile?.id);
-      
-  //     // First get the candidate record for this user
-  //     const { data: candidateData, error: candidateError } = await supabase
-  //       .from('candidates')
-  //       .select('id')
-  //       .eq('user_id', profile?.id)
-  //       .single();
-
-  //     if (candidateError || !candidateData) {
-  //       console.error('No candidate profile found:', candidateError);
-  //       setLoading(false);
-  //       return;
-  //     }
-
-  //     // Get candidate's applications using the candidate ID
-  //     const { data: applicationsData, error: appsError } = await supabase
-  //       .from('job_applications')
-  //       .select(`
-  //         *,
-  //         jobs (
-  //           id,
-  //           title,
-  //           location,
-  //           salary_min,
-  //           salary_max,
-  //           currency,
-  //           companies (name)
-  //         )
-  //       `)
-  //       .eq('candidate_id', candidateData.id)
-  //       .order('applied_at', { ascending: false });
-
-  //     if (appsError) {
-  //       console.error('Error fetching applications:', appsError);
-  //     } else {
-  //       setApplications(applicationsData || []);
-        
-  //       // Calculate stats
-  //       const totalApps = applicationsData?.length || 0;
-  //       const inReview = applicationsData?.filter(app => app.status === 'screening' || app.status === 'reviewing').length || 0;
-  //       const interviews = applicationsData?.filter(app => app.status === 'interview').length || 0;
-        
-  //       setStats({
-  //         applications: totalApps,
-  //         inReview,
-  //         interviews,
-  //         profileViews: 24 // Mock for now
-  //       });
-  //     }
-
-  //     // Get AI-powered job recommendations
-  //     const { data: recommendedJobs, error: recommendError } = await supabase.functions.invoke('recommend-jobs', {
-  //       body: { userId: profile.id }
-  //     });
-
-  //     if (recommendError) {
-  //       console.error('Error fetching AI recommendations:', recommendError);
-  //       // Fallback to regular job fetching
-  //       const { data: fallbackJobs, error: fallbackError } = await supabase
-  //         .from('jobs')
-  //         .select(`
-  //           *,
-  //           companies (name, logo_url)
-  //         `)
-  //         .eq('status', 'published')
-  //         .order('created_at', { ascending: false })
-  //         .limit(6);
-
-  //       if (!fallbackError) {
-  //         setRecommendedJobs(fallbackJobs || []);
-  //       }
-  //     } else {
-  //       setRecommendedJobs(recommendedJobs || []);
-  //     }
-
-  //   } catch (error) {
-  //     console.error('Error fetching candidate data:', error);
-  //     toast({
-  //       title: "Failed to load dashboard data",
-  //       description: "Could not fetch your applications and job recommendations.",
-  //       variant: "destructive",
-  //     });
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
-
-  //   const fetchCandidateData = async () => {
-
-  //      if (!profile?.id) {
-  //       setLoading(false);
-  //       return;
-  //   }
-  //    setLoading(true);
-  //   try {
-  //     console.log('Fetching candidate data for user:', profile.id);
-      
-  //     // First get the candidate record for this user
-  //     const { data: candidateData, error: candidateError } = await supabase
-  //       .from('candidates')
-  //       .select('id')
-  //       .eq('profile_id', profile.id)
-  //       .single();
-
-  //     if (candidateError || !candidateData) {
-  //       console.error('No candidate profile found:', candidateError);
-  //       setLoading(false);
-  //       return;
-  //     }
-  //     const candidateId = candidateData.id;
-  //     // Get candidate's applications using the candidate ID
-  //     const { data: applicationsData, error: appsError } = await supabase
-  //       .from('job_applications')
-  //       .select(`
-  //         *,
-  //         jobs (
-  //           id,
-  //           title,
-  //           location,
-  //           salary_min,
-  //           salary_max,
-  //           currency,
-  //           companies (name)
-  //         )
-  //       `)
-  //       .eq('candidate_id', candidateId)
-  //       .order('applied_at', { ascending: false });
-
-  //     if (appsError) {
-  //       console.error('Error fetching applications:', appsError);
-  //     } else {
-  //       setApplications(applicationsData || []);
-        
-  //       // Calculate stats
-  //       const totalApps = applicationsData?.length || 0;
-  //      const inReview = applicationsData?.filter(app => ['applied', 'screening', 'reviewing'].includes(app.status)).length || 0;
-  //           const interviews = applicationsData?.filter(app => app.status === 'interview').length || 0;
-            
-  //       setStats({
-  //         applications: totalApps,
-  //         inReview,
-  //         interviews,
-  //         profileViews: 24 // Mock for now
-  //       });
-  //     }
-
-  //     // Get AI-powered job recommendations
-  //     const { data: recommendedJobs, error: recommendError } = await supabase.functions.invoke('recommend-jobs', {
-  //       body: { userId: profile.id }
-  //     });
-
-  //     if (recommendError) {
-  //       console.error('Error fetching AI recommendations:', recommendError);
-  //       // Fallback to regular job fetching
-  //       const { data: fallbackJobs, error: fallbackError } = await supabase
-  //         .from('jobs')
-  //         .select(`
-  //           *,
-  //           companies (name, logo_url)
-  //         `)
-  //         .eq('status', 'published')
-  //         .order('created_at', { ascending: false })
-  //         .limit(6);
-
-  //       if (!fallbackError) {
-  //         setRecommendedJobs(fallbackJobs || []);
-  //       }
-  //     } else {
-  //       setRecommendedJobs(recommendedJobs || []);
-  //     }
-
-  //   } catch (error) {
-  //     console.error('Error fetching candidate data:', error);
-  //     toast({
-  //       title: "Failed to load dashboard data",
-  //       description: "Could not fetch your applications and job recommendations.",
-  //       variant: "destructive",
-  //     });
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
-  // In CandidateDashboard.tsx
-// diagnostic function to fetch candidate data
-// const fetchCandidateData = async () => {
-//     if (!profile?.id) {
-//         setLoading(false);
-//         console.log("--- ABORTING FETCH: Profile not yet loaded. ---");
-//         return;
-//     }
-//     setLoading(true);
-//     console.log(`--- STARTING DASHBOARD FETCH for Candidate Profile ID: ${profile.id} ---`);
-
-//     try {
-//         // --- STEP 1: Fetch the candidate's own internal ID ---
-//         console.log("Step 1: Fetching ID from 'candidates' table...");
-//         const { data: candidateData, error: candidateError, status: candidateStatus } = await supabase
-//             .from('candidates')
-//             .select('id')
-//             .eq('profile_id', profile.id)
-//             .single();
-
-//         console.log("Step 1 Response Status:", candidateStatus);
-//         if (candidateError || !candidateData) {
-//             console.error(">>> FAILURE at Step 1: Could not find candidate record.", candidateError);
-//             throw new Error("Your candidate record could not be found. This might be an RLS issue on the 'candidates' table.");
-//         }
-//         const candidateId = candidateData.id;
-//         console.log("Step 1 SUCCESS. Found Candidate ID:", candidateId);
-
-//         // --- STEP 2: Fetch the candidate's applications using their ID ---
-//         console.log(`Step 2: Fetching applications from 'job_applications' where candidate_id = ${candidateId}...`);
-//         const { data: applicationsData, error: appsError, status: appsStatus } = await supabase
-//             .from('job_applications')
-//             .select(`
-//                 *,
-//                 jobs (
-//                     id, title, location,
-//                     companies (name)
-//                 )
-//             `)
-//             .eq('candidate_id', candidateId)
-//             .order('applied_at', { ascending: false });
-
-//         console.log("Step 2 Response Status:", appsStatus);
-//         if (appsError) {
-//             console.error(">>> FAILURE at Step 2: Error fetching applications.", appsError);
-//             throw appsError;
-//         }
-//         console.log("Step 2 SUCCESS. Raw application data received:", applicationsData);
-
-//         // --- STEP 3: Process the data ---
-//         if (applicationsData) {
-//             setApplications(applicationsData);
-//             const totalApps = applicationsData.length;
-//             const inReview = applicationsData.filter(app => ['applied', 'screening', 'reviewing'].includes(app.status)).length;
-//             const interviews = applicationsData.filter(app => app.status === 'interview').length;
-            
-//             console.log(`Step 3 SUCCESS. Calculated Stats: Total=${totalApps}, In Review=${inReview}, Interviews=${interviews}`);
-//             setStats({
-//                 applications: totalApps,
-//                 inReview,
-//                 interviews,
-//                 profileViews: 24 // Mock
-//             });
-//         }
-
-//     } catch (error: any) {
-//         console.error("--- CATCH BLOCK: Fetch process failed. ---", error);
-//         toast({
-//             title: "Failed to load dashboard data",
-//             description: error.message,
-//             variant: "destructive",
-//         });
-//     } finally {
-//         setLoading(false);
-//     }
-// };
-
-
-// In CandidateDashboard.tsx
 
 const fetchCandidateData = async () => {
     if (!profile?.id) {
@@ -419,7 +216,7 @@ const fetchCandidateData = async () => {
             
             // Your stats calculation will now work perfectly with the RPC data.
             const totalApps = applicationsData.length;
-            const inReview = applicationsData.filter(app => ['applied', 'screening', 'reviewing'].includes(app.status)).length;
+            const inReview = applicationsData.filter(app => ['selected', 'screening', 'interview'].includes(app.status)).length;
             // const interviews = applicationsData.filter(app => app.status === 'interview').length;
             
             setStats({
@@ -548,35 +345,35 @@ const fetchCandidateData = async () => {
   // --- START: THIS IS THE NEW LOGIC THAT CONNECTS EVERYTHING ---
 
   // 1. We call the NEW hook dedicated to the candidate's modal.
-  const {
-    filteredData,
-    loading: modalLoading, // Rename to avoid conflict with dashboard's `loading` state
-    searchTerm,
-    filterValue,
-    setSearchTerm,
-    setFilterValue,
-  } = useCandidateViewData(
-    detailModal.type,
-    detailModal.open,
-    applications,
-    // This logic you wrote is perfect for passing pre-filtered data.
-    detailModal.type === 'my-applications'
-      ? applications
-    : detailModal.type === 'in-review'
-      ? applications.filter(app => ['applied', 'screening', 'interview', 'selected'].includes(app.status)) // Updated statuses
-    : undefined
-  );
+  // const {
+  //   filteredData,
+  //   loading: modalLoading, // Rename to avoid conflict with dashboard's `loading` state
+  //   searchTerm,
+  //   filterValue,
+  //   setSearchTerm,
+  //   setFilterValue,
+  // } = useCandidateViewData(
+  //   detailModal.type,
+  //   detailModal.open,
+  //   applications,
+  //   // This logic you wrote is perfect for passing pre-filtered data.
+  //   detailModal.type === 'my-applications'
+  //     ? applications
+  //   : detailModal.type === 'in-review'
+  //     ? applications.filter(app => ['applied', 'screening', 'interview', 'selected'].includes(app.status)) // Updated statuses
+  //   : undefined
+  // );
   
   // --- END: NEW LOGIC ---
-   useEffect(() => {
-    if (detailModal.open) {
-      console.log('--- MODAL DATA VERIFICATION ---');
-      console.log('Modal Type:', detailModal.type);
-      console.log('Data being passed to modal:', filteredData);
-      console.log('Total Records:', filteredData.length);
-      console.log('-----------------------------');
-    }
-  }, [filteredData, detailModal.open, detailModal.type]);
+  //  useEffect(() => {
+  //   if (detailModal.open) {
+  //     console.log('--- MODAL DATA VERIFICATION ---');
+  //     console.log('Modal Type:', detailModal.type);
+  //     console.log('Data being passed to modal:', filteredData);
+  //     console.log('Total Records:', filteredData.length);
+  //     console.log('-----------------------------');
+  //   }
+  // }, [filteredData, detailModal.open, detailModal.type]);
 
   return (
     <>
@@ -709,7 +506,7 @@ const fetchCandidateData = async () => {
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Application Status */}
-          <div className="lg:col-span-2">
+          {/* <div className="lg:col-span-2">
             <div className="card-premium">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
@@ -764,7 +561,98 @@ const fetchCandidateData = async () => {
                 </div>
               </div>
             </div>
+          </div> */}
+          {/* // This is the new, complete section for "My Applications"
+// It replaces the original block in your return statement. */}
+
+<div className="lg:col-span-2">
+  <div className="card-premium">
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-4"> {/* Adjusted margin */}
+        <div>
+          <h3 className="text-xl font-semibold text-gradient-primary">My Applications</h3>
+          <p className="text-muted-foreground">Track your job application progress</p>
+        </div>
+        <Button variant="ghost" size="sm" className="rounded-full">
+          <MoreHorizontal className="w-4 h-4" />
+        </Button>
+      </div>
+
+      {/* --- 1. SEARCH BAR --- */}
+      {/* We add the search input here, right below the header. */}
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search by job title or company..."
+          value={mainListSearchTerm}
+          onChange={(e) => {
+            setMainListSearchTerm(e.target.value);
+            setMainListCurrentPage(1); // Reset to page 1 whenever the user types
+          }}
+          className="pl-10"
+        />
+      </div>
+
+      {/* --- 2. THE APPLICATION LIST --- */}
+      <div className="space-y-4 min-h-[300px]"> {/* Added min-height to prevent layout shifts */}
+        {/* We now map over the new `paginatedApplications` variable */}
+        {loading ? (
+          <div className="text-center py-8 text-muted-foreground">Loading applications...</div>
+        ) : paginatedApplications.length > 0 ? (
+          paginatedApplications.map((application) => (
+            // Your existing card design is perfect and remains unchanged.
+            <div key={application.id} className="table-row-hover p-4 rounded-lg border border-border/50">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h4 className="font-medium text-foreground">{application.jobs?.title}</h4>
+                  <div className="flex items-center space-x-2 text-sm text-muted-foreground mt-1">
+                    <Building className="w-3 h-3" />
+                    <span>{application.jobs?.companies?.name}</span>
+                    <span>•</span>
+                    <MapPin className="w-3 h-3" />
+                    <span>{application.jobs?.location || 'Remote'}</span>
+                  </div>
+                  <div className="flex items-center space-x-4 text-xs text-muted-foreground mt-2">
+                    <span>Applied {new Date(application.applied_at).toLocaleDateString()}</span>
+                    {application.jobs?.salary_min && application.jobs?.salary_max && (
+                      <span>Salary: {application.jobs.salary_min.toLocaleString()} - {application.jobs.salary_max.toLocaleString()} {application.jobs.currency}</span>
+                    )}
+                  </div>
+                </div>
+                <Badge className={getApplicationStatusColor(application.status)}>
+                  {application.status}
+                </Badge>
+              </div>
+            </div>
+          ))
+        ) : (
+          // This "empty state" now handles both "no applications at all" and "no search results".
+          <div className="text-center py-8">
+            <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+            <p className="text-muted-foreground mb-4">
+              {mainListSearchTerm ? "No applications match your search." : "You haven't applied to any jobs yet."}
+            </p>
+            <Button 
+              variant="outline" 
+              onClick={() => navigate('/jobs')}
+            >
+              <Search className="w-4 h-4 mr-2" />
+              Browse Jobs
+            </Button>
           </div>
+        )}
+      </div>
+
+      {/* --- 3. THE PAGINATION CONTROLS --- */}
+      {/* This component will only render if there is more than one page. */}
+      <PaginationControls
+        currentPage={mainListCurrentPage}
+        totalPages={totalPages}
+        onPageChange={setMainListCurrentPage}
+      />
+    </div>
+  </div>
+</div>
 
           {/* Profile & Quick Actions */}
           <div className="space-y-6">
