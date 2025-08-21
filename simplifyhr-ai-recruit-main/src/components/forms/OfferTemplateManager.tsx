@@ -167,11 +167,18 @@ const OfferTemplateManager = ({ trigger, onTemplateUploaded }: OfferTemplateMana
       // For now, store just the file path as string (as per current types)  
       const templateContent = uploadData.path;
 
-      // Create template record with company_id
+      // Make template name unique to avoid constraint violations
+      // The database has a unique constraint on (company_id, template_name)
+      const timestamp = Date.now();
+      const fileExtension = selectedFile.name.substring(selectedFile.name.lastIndexOf('.'));
+      const nameWithoutExt = selectedFile.name.substring(0, selectedFile.name.lastIndexOf('.'));
+      const uniqueTemplateName = `${nameWithoutExt}_${timestamp}${fileExtension}`;
+
+      // Create template record with company_id and unique name
       const { data: template, error: templateError } = await supabase
         .from('offer_templates')
         .insert({
-          template_name: selectedFile.name,
+          template_name: uniqueTemplateName,
           template_content: templateContent,
           created_by: profile.id,
           company_id: companyId,
