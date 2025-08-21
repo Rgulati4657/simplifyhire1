@@ -548,6 +548,7 @@ const MergedCalendarView: React.FC<MergedCalendarViewProps> = ({
 //   }, [candidates, interviewers, duration]);
 
   // -------------------- FINAL, DATA-ACCURATE CODE --------------------
+// -------------------- CODE WITH DIAGNOSTIC LOGS --------------------
 
   useEffect(() => {
     // Guard clause
@@ -556,21 +557,22 @@ const MergedCalendarView: React.FC<MergedCalendarViewProps> = ({
       return;
     }
 
-    console.log("--- MergedCalendarView: Raw Inputs ---", { candidates, interviewers, duration });
+    // ★★★ LOG #1: RAW INPUT DATA ★★★
+    // This shows us the props exactly as they come into the component.
+    console.log("--- MergedCalendarView: Raw Inputs ---", { 
+      candidates: JSON.parse(JSON.stringify(candidates)), 
+      interviewers: JSON.parse(JSON.stringify(interviewers)), 
+      duration 
+    });
 
     // 1. GATHER & NORMALIZE ALL SLOTS
     const allParticipants: Participant[] = [];
     
     candidates.forEach(c => {
-      // ▼▼▼ THIS IS THE FIX ▼▼▼
-      // The candidate's real slots are nested one level deeper.
-      // We safely access this nested array.
       const candidateSlotsData = c.candidates?.free_slots?.[0]?.free_slots || [];
-      
       const validSlots = candidateSlotsData.filter(
-        slot => slot && slot.start && slot.end
+        slot => slot && slot.start && slot.end && isAfter(parseISO(slot.end), parseISO(slot.start))
       );
-      
       const candidateSlots = validSlots.map(s => ({
         start: parseISO(s.start),
         end: parseISO(s.end),
@@ -581,7 +583,7 @@ const MergedCalendarView: React.FC<MergedCalendarViewProps> = ({
     interviewers.forEach(i => {
       const interviewerSlotsData = i.free_slots?.free_slots || [];
       const validSlots = interviewerSlotsData.filter(
-        slot => slot && slot.start_time && slot.end_time
+        slot => slot && slot.start_time && slot.end_time && isAfter(parseISO(slot.end_time), parseISO(slot.start_time))
       );
       const interviewerSlots = validSlots.map(s => ({
         start: parseISO(s.start_time),
@@ -590,9 +592,11 @@ const MergedCalendarView: React.FC<MergedCalendarViewProps> = ({
       allParticipants.push({ id: i.id, slots: interviewerSlots });
     });
 
+    // ★★★ LOG #2: NORMALIZED DATA FOR THE ALGORITHM ★★★
+    // This is the most important log. It shows the clean Date objects the algorithm will process.
     console.log("--- MergedCalendarView: Normalized Participants & Slots ---", allParticipants);
     
-    // --- The rest of the logic remains the same ---
+    // 2. GENERATE POTENTIAL START TIMES
     const potentialStartTimes = new Set<number>();
     allParticipants.forEach(p => {
       p.slots.forEach(s => {
@@ -604,6 +608,7 @@ const MergedCalendarView: React.FC<MergedCalendarViewProps> = ({
       });
     });
 
+    // 3. VALIDATE EACH POTENTIAL SLOT
     const commonSlots: MergedSlot[] = [];
     const now = new Date();
 
@@ -633,11 +638,106 @@ const MergedCalendarView: React.FC<MergedCalendarViewProps> = ({
         }
       });
     
+    // ★★★ LOG #3: FINAL OUTPUT ★★★
+    // This shows us the final result of the algorithm.
     console.log(`--- MergedCalendarView: Found ${commonSlots.length} Common Slots ---`, commonSlots);
 
     setAvailableSlots(commonSlots);
     
   }, [candidates, interviewers, duration]);
+
+// -------------------- END OF CODE WITH LOGS --------------------```
+
+// was working fine with assigned profile issue 
+  // useEffect(() => {
+  //   // Guard clause
+  //   if (candidates.length === 0 || interviewers.length === 0 || !duration) {
+  //     setAvailableSlots([]);
+  //     return;
+  //   }
+
+  //   console.log("--- MergedCalendarView: Raw Inputs ---", { candidates, interviewers, duration });
+
+  //   // 1. GATHER & NORMALIZE ALL SLOTS
+  //   const allParticipants: Participant[] = [];
+    
+  //   candidates.forEach(c => {
+  //     // ▼▼▼ THIS IS THE FIX ▼▼▼
+  //     // The candidate's real slots are nested one level deeper.
+  //     // We safely access this nested array.
+  //     const candidateSlotsData = c.candidates?.free_slots?.[0]?.free_slots || [];
+      
+  //     const validSlots = candidateSlotsData.filter(
+  //       slot => slot && slot.start && slot.end
+  //     );
+      
+  //     const candidateSlots = validSlots.map(s => ({
+  //       start: parseISO(s.start),
+  //       end: parseISO(s.end),
+  //     }));
+  //     allParticipants.push({ id: c.id, slots: candidateSlots });
+  //   });
+
+  //   interviewers.forEach(i => {
+  //     const interviewerSlotsData = i.free_slots?.free_slots || [];
+  //     const validSlots = interviewerSlotsData.filter(
+  //       slot => slot && slot.start_time && slot.end_time
+  //     );
+  //     const interviewerSlots = validSlots.map(s => ({
+  //       start: parseISO(s.start_time),
+  //       end: parseISO(s.end_time),
+  //     }));
+  //     allParticipants.push({ id: i.id, slots: interviewerSlots });
+  //   });
+
+  //   console.log("--- MergedCalendarView: Normalized Participants & Slots ---", allParticipants);
+    
+  //   // --- The rest of the logic remains the same ---
+  //   const potentialStartTimes = new Set<number>();
+  //   allParticipants.forEach(p => {
+  //     p.slots.forEach(s => {
+  //       let currentTime = s.start;
+  //       while (addMinutes(currentTime, duration) <= s.end) {
+  //         potentialStartTimes.add(currentTime.getTime());
+  //         currentTime = addMinutes(currentTime, 15);
+  //       }
+  //     });
+  //   });
+
+  //   const commonSlots: MergedSlot[] = [];
+  //   const now = new Date();
+
+  //   Array.from(potentialStartTimes)
+  //     .sort()
+  //     .forEach(timeValue => {
+  //       const potentialStart = new Date(timeValue);
+  //       if (!isAfter(potentialStart, now)) return;
+
+  //       const potentialEnd = addMinutes(potentialStart, duration);
+  //       const isEveryoneAvailable = allParticipants.every(participant => {
+  //         return participant.slots.some(
+  //           freeSlot =>
+  //             freeSlot.start.getTime() <= potentialStart.getTime() &&
+  //             freeSlot.end.getTime() >= potentialEnd.getTime()
+  //         );
+  //       });
+
+  //       if (isEveryoneAvailable) {
+  //         commonSlots.push({
+  //           start: potentialStart,
+  //           end: potentialEnd,
+  //           candidateIds: candidates.map(c => c.id),
+  //           interviewerIds: interviewers.map(i => i.id),
+  //           score: calculateTimeScore(potentialStart)
+  //         });
+  //       }
+  //     });
+    
+  //   console.log(`--- MergedCalendarView: Found ${commonSlots.length} Common Slots ---`, commonSlots);
+
+  //   setAvailableSlots(commonSlots);
+    
+  // }, [candidates, interviewers, duration]);
 
 // -------------------- END OF FINAL CODE --------------------
 // -------------------- END OF FINAL CORRECTED CODE --------------------

@@ -8,7 +8,7 @@ import { ApplicationsTable } from '../tables/ApplicationsTable';
 import { MyApplicationsTable } from '../tables/MyApplicationsTable';
 import { MyInterviewsTable } from '../tables/MyInterviewsTable';
 import { InterviewsTable } from '../tables/InterviewsTable'; // <-- ADD THIS IMPORT
-import { CandidateApplicationsTable } from '../tables/candidateApplicationsTable';
+import { CandidateApplicationsTable } from '../tables/CandidateApplicationsTable';
 interface TableRendererProps {
   type: DataType;
   data: any[];
