@@ -23,21 +23,13 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 interface OfferTemplate {
   id: string;
   template_name: string;
-  template_content: {
-    file_path?: string;
-    file_size?: number;
-    file_type?: string;
-  };
-  template_link?: string;
+  template_content: string;
   created_at: string;
   updated_at: string;
-  is_validated: boolean;
-  is_default: boolean;
-  template_version: number;
+  is_validated: boolean | null;
   country: string;
-  job_role: string;
-  validation_notes?: string;
-  company_id: string;
+  job_role: string | null;
+  validation_notes?: string | null;
   created_by: string;
 }
 
@@ -96,7 +88,18 @@ const OfferTemplateManager = ({ trigger, onTemplateUploaded }: OfferTemplateMana
       setLoading(true);
       const { data, error } = await supabase
         .from('offer_templates')
-        .select('*')
+        .select(`
+          id,
+          template_name,
+          template_content,
+          created_at,
+          updated_at,
+          is_validated,
+          country,
+          job_role,
+          validation_notes,
+          created_by
+        `)
         .eq('created_by', profile.id)
         .order('created_at', { ascending: false });
       
@@ -138,104 +141,35 @@ const OfferTemplateManager = ({ trigger, onTemplateUploaded }: OfferTemplateMana
     try {
       setUploading(true);
       
-      console.log('Starting upload for file:', selectedFile.name, 'Size:', selectedFile.size, 'Type:', selectedFile.type);
-      
       // Upload file to storage
       const fileName = `${profile.id}/${Date.now()}-${selectedFile.name}`;
-      console.log('Uploading to path:', fileName);
-      
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('offer-templates')
-        .upload(fileName, selectedFile, {
-          cacheControl: '3600',
-          upsert: false
-        });
+        .upload(fileName, selectedFile);
 
       if (uploadError) {
         console.error('Storage upload error:', uploadError);
         throw uploadError;
       }
 
-      console.log('File uploaded successfully:', uploadData);
-
-      // For now, let's use a simple approach and create a minimal company record
-      // or use the first available company from the companies table
-      let companyId;
-      
-      try {
-        // Get the first available company from the companies table
-        const { data: existingCompanies, error: companiesError } = await supabase
-          .from('companies')
-          .select('id')
-          .limit(1);
-
-        if (existingCompanies && existingCompanies.length > 0) {
-          companyId = existingCompanies[0].id;
-          console.log('Using existing company:', companyId);
-        } else {
-          // Create a default company
-          const { data: newCompany, error: createCompanyError } = await supabase
-            .from('companies')
-            .insert({
-              name: 'Default Company',
-              country: 'Indonesia',
-              is_active: true
-            })
-            .select('id')
-            .single();
-
-          if (createCompanyError) {
-            console.error('Could not create company:', createCompanyError);
-            throw new Error('Failed to create company record');
-          }
-          
-          companyId = newCompany.id;
-          console.log('Created new company:', companyId);
-        }
-      } catch (companyError) {
-        console.error('Company handling error:', companyError);
-        throw new Error('Failed to resolve company association');
-      }
-
-      console.log('Using company_id:', companyId);
-
-      // Prepare template data
-      const templateData = {
-        template_name: selectedFile.name,
-        template_content: { 
-          file_path: uploadData.path, 
-          file_size: selectedFile.size, 
-          file_type: selectedFile.type 
-        },
-        template_link: uploadData.path,
-        created_by: profile.id,
-        company_id: companyId,
-        country: 'Indonesia', // Default country, can be made configurable
-        job_role: selectedRole,
-        is_validated: false,
-        is_default: false,
-        template_version: 1
-      };
-
-      console.log('Inserting template data:', templateData);
-
-      // Create template record with new schema
+      // Create template record with actual schema fields only
       const { data: template, error: templateError } = await supabase
         .from('offer_templates')
-        .insert(templateData)
+        .insert({
+          template_name: selectedFile.name,
+          template_content: uploadData.path,
+          created_by: profile.id,
+          country: 'Indonesia',
+          job_role: selectedRole,
+          is_validated: false
+        })
         .select()
         .single();
 
       if (templateError) {
         console.error('Database insert error:', templateError);
-        // If database insert fails, clean up the uploaded file
-        await supabase.storage
-          .from('offer-templates')
-          .remove([uploadData.path]);
         throw templateError;
       }
-
-      console.log('Template created successfully:', template);
 
       setTemplates(prev => [template as OfferTemplate, ...prev]);
       setSelectedFile(null);
@@ -252,22 +186,9 @@ const OfferTemplateManager = ({ trigger, onTemplateUploaded }: OfferTemplateMana
       onTemplateUploaded?.();
     } catch (error: any) {
       console.error('Error uploading template:', error);
-      
-      // Provide more specific error messages
-      let errorMessage = "Could not upload the template";
-      if (error.message?.includes('duplicate')) {
-        errorMessage = "A file with this name already exists";
-      } else if (error.message?.includes('storage')) {
-        errorMessage = "Storage upload failed - check file size and type";
-      } else if (error.message?.includes('row-level security')) {
-        errorMessage = "Permission denied - please check your account access";
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
       toast({
         title: "Upload failed",
-        description: errorMessage,
+        description: error.message || "Could not upload the template",
         variant: "destructive",
       });
     } finally {
@@ -275,20 +196,15 @@ const OfferTemplateManager = ({ trigger, onTemplateUploaded }: OfferTemplateMana
     }
   };
 
-  const deleteTemplate = async (templateId: string, template: OfferTemplate) => {
+  const deleteTemplate = async (templateId: string, filePath: string) => {
     try {
-      // Extract file path from template_content (which is now jsonb) or fallback to template_link
-      const filePath = template.template_content?.file_path || template.template_link;
-      
-      if (filePath) {
-        // Delete from storage
-        const { error: storageError } = await supabase.storage
-          .from('offer-templates')
-          .remove([filePath]);
+      // Delete from storage
+      const { error: storageError } = await supabase.storage
+        .from('offer-templates')
+        .remove([filePath]);
 
-        if (storageError) {
-          console.warn('Storage deletion error (file may not exist):', storageError);
-        }
+      if (storageError) {
+        console.warn('Storage deletion error (file may not exist):', storageError);
       }
 
       // Delete from database
@@ -317,16 +233,9 @@ const OfferTemplateManager = ({ trigger, onTemplateUploaded }: OfferTemplateMana
 
   const downloadTemplate = async (template: OfferTemplate) => {
     try {
-      // Extract file path from template_content (which is now jsonb) or fallback to template_link
-      const filePath = template.template_content?.file_path || template.template_link;
-      
-      if (!filePath) {
-        throw new Error('File path not found in template');
-      }
-
       const { data, error } = await supabase.storage
         .from('offer-templates')
-        .download(filePath);
+        .download(template.template_content);
 
       if (error) throw error;
 
@@ -525,7 +434,7 @@ const OfferTemplateManager = ({ trigger, onTemplateUploaded }: OfferTemplateMana
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
                               <AlertDialogAction 
-                                onClick={() => deleteTemplate(template.id, template)}
+                                onClick={() => deleteTemplate(template.id, template.template_content)}
                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               >
                                 Delete
