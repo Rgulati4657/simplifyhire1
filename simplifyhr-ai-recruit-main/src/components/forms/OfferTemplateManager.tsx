@@ -163,6 +163,8 @@ const OfferTemplateManager = ({ trigger, onTemplateUploaded }: OfferTemplateMana
       // we'll use the user's profile ID as a fallback company_id
       // This is a temporary solution until proper company management is implemented
       const companyId = profile.id;
+      console.log('Using company ID:', companyId);
+      console.log('Profile ID:', profile.id);
 
       // For now, store just the file path as string (as per current types)  
       const templateContent = uploadData.path;
@@ -170,11 +172,25 @@ const OfferTemplateManager = ({ trigger, onTemplateUploaded }: OfferTemplateMana
       // Make template name unique to avoid constraint violations
       // The database has a unique constraint on (company_id, template_name)
       const timestamp = Date.now();
+      const randomSuffix = Math.random().toString(36).substring(2, 8);
       const fileExtension = selectedFile.name.substring(selectedFile.name.lastIndexOf('.'));
       const nameWithoutExt = selectedFile.name.substring(0, selectedFile.name.lastIndexOf('.'));
-      const uniqueTemplateName = `${nameWithoutExt}_${timestamp}${fileExtension}`;
+      const uniqueTemplateName = `${nameWithoutExt}_${timestamp}_${randomSuffix}${fileExtension}`;
+
+      console.log('Creating template with unique name:', uniqueTemplateName);
+      console.log('Company ID:', companyId);
 
       // Create template record with company_id and unique name
+      console.log('Attempting to insert template with data:', {
+        template_name: uniqueTemplateName,
+        template_content: templateContent,
+        created_by: profile.id,
+        company_id: companyId,
+        country: 'Indonesia',
+        job_role: selectedRole || 'General',
+        is_validated: false
+      });
+
       const { data: template, error: templateError } = await supabase
         .from('offer_templates')
         .insert({
@@ -191,6 +207,27 @@ const OfferTemplateManager = ({ trigger, onTemplateUploaded }: OfferTemplateMana
 
       if (templateError) {
         console.error('Database insert error:', templateError);
+        console.error('Error details:', {
+          code: templateError.code,
+          message: templateError.message,
+          details: templateError.details,
+          hint: templateError.hint
+        });
+        
+        // Check if it's a unique constraint violation
+        if (templateError.code === '23505') {
+          toast({
+            title: "Template name conflict",
+            description: "A template with this name already exists. Please try again.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Database error",
+            description: templateError.message || "Could not save template to database",
+            variant: "destructive",
+          });
+        }
         throw templateError;
       }
 
