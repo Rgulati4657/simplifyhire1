@@ -61,6 +61,7 @@ interface InterviewRound {
 interface Interviewer {
   id: string;
   user_id: string;
+   interviewer_id: string;
   first_name: string;
   last_name: string;
   email: string;
@@ -99,6 +100,9 @@ const InterviewSchedulingModal: React.FC<InterviewSchedulingModalProps> = ({
   const [interviewers, setInterviewers] = useState<Interviewer[]>([]);
   const [selectedInterviewers, setSelectedInterviewers] = useState<string[]>([]);
 
+  // Add this near your other useState definitions
+const [loadingCalendarData, setLoadingCalendarData] = useState(false);
+
   // Step 4: Calendar and Meeting Details
   const [selectedSlots, setSelectedSlots] = useState<any[]>([]);
   const [meetingDetails, setMeetingDetails] = useState({
@@ -131,10 +135,14 @@ const InterviewSchedulingModal: React.FC<InterviewSchedulingModalProps> = ({
   // Fetch interviewers when round is selected
   useEffect(() => {
     if (selectedRound) {
-      fetchInterviewers(selectedRound.id);
-    }else{
-      setInterviewers([]);
-    }
+      // fetchInterviewers(selectedRound.id);
+        setLoadingCalendarData(true); // <-- ADD THIS LINE
+    fetchInterviewers(selectedRound.id).finally(() => {
+      setLoadingCalendarData(false); // <-- ADD THIS LINE
+    });
+  } else {
+    setInterviewers([]);
+  }
   }, [selectedRound]);
 
   const fetchJobs = async () => {
@@ -380,13 +388,22 @@ const filteredJobs = jobs.filter(job =>
     );
   };
 
-  const handleInterviewerToggle = (interviewerId: string) => {
-    setSelectedInterviewers(prev =>
-      prev.includes(interviewerId)
-        ? prev.filter(id => id !== interviewerId)
-        : [...prev, interviewerId]
-    );
-  };
+  // const handleInterviewerToggle = (interviewerId: string) => {
+  //   setSelectedInterviewers(prev =>
+  //     prev.includes(interviewerId)
+  //       ? prev.filter(id => id !== interviewerId)
+  //       : [...prev, interviewerId]
+  //   );
+  // };
+
+  const handleInterviewerToggle = (interviewer: Interviewer) => {
+  const idToStore = interviewer.interviewer_id; // <-- THE FIX
+  setSelectedInterviewers(prev =>
+    prev.includes(idToStore)
+      ? prev.filter(id => id !== idToStore)
+      : [...prev, idToStore]
+  );
+};
 
   const addGuestInterviewer = () => {
     if (guestEmail.trim() && !guestInterviewers.includes(guestEmail.trim())) {
@@ -1020,8 +1037,8 @@ const handleScheduleInterview = async () => {
                         <Card key={interviewer.id} className="p-3 hover:shadow-md transition-shadow">
                           <div className="flex items-start space-x-3">
                             <Checkbox
-                              checked={selectedInterviewers.includes(interviewer.id)}
-                              onCheckedChange={() => handleInterviewerToggle(interviewer.id)}
+                              checked={selectedInterviewers.includes(interviewer.interviewer_id)}
+                              onCheckedChange={() => handleInterviewerToggle(interviewer)}
                               className="mt-1"
                             />
                             <div className="flex-1 min-w-0">
@@ -1115,9 +1132,19 @@ const handleScheduleInterview = async () => {
         const selectedApplicantData = applicants.filter(app => 
           selectedApplicants.includes(app.id)
         );
-        const selectedInterviewerData = interviewers.filter(int => 
-          selectedInterviewers.includes(int.id)
-        );
+        // const selectedInterviewerData = interviewers.filter(int => 
+        //   selectedInterviewers.includes(int.id)
+        // );
+          const selectedInterviewerData = interviewers;
+
+  // ▼▼▼ THIS IS THE FIX ▼▼▼
+  if (loadingCalendarData) {
+    return (
+      <div className="flex items-center justify-center h-full min-h-[450px]">
+        <p>Finding common availability...</p>
+      </div>
+    );
+  }
 
         return (
           <div className="space-y-6">
