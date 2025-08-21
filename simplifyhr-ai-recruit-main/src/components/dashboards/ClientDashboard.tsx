@@ -34,6 +34,7 @@ import { Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import InterviewSchedulingModal from '@/components/scheduling/InterviewSchedulingModal';
 
 import { ViewJobModal } from '@/components/modals/ViewJobModal';
 
@@ -308,10 +309,10 @@ const fetchDashboardData = async () => {
           className="pl-10 w-64"
         />
       </div>
-      <Button variant="outline" size="sm">
+      {/* <Button variant="outline" size="sm">
         <Filter className="w-4 h-4 mr-2" />
         Filter
-      </Button>
+      </Button> */}
       <Button 
         variant="outline" 
         size="sm"
@@ -324,6 +325,7 @@ const fetchDashboardData = async () => {
       <AddVendorModal onVendorAdded={fetchDashboardData} />
       <OfferTemplateManager onTemplateUploaded={fetchDashboardData} />
       <CreateJobModal onJobCreated={fetchDashboardData} />
+      <InterviewSchedulingModal onScheduled={fetchDashboardData} />
     </div>
   );
 

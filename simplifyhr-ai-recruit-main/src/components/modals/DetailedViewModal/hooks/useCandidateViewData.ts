@@ -1,118 +1,5 @@
 
 
-// import { useState, useEffect, useMemo } from 'react';
-// import { supabase } from '@/integrations/supabase/client';
-// import { useToast } from '@/hooks/use-toast';
-// import { DataType } from '../types';
-// import { getSearchFields } from '../utils';
-
-
-// const ITEMS_PER_PAGE = 10;
-
-// export const useCandidateViewData = (
-//   type: DataType,
-//   open: boolean
-// ) => {
-//   const [rawData, setRawData] = useState<any[]>([]);
-//   const [loading, setLoading] = useState(true);
-//   const [searchTerm, setSearchTerm] = useState('');
-//   const [filterValue, setFilterValue] = useState('all');
-
-//    const [currentPage, setCurrentPage] = useState(1);
-
-//   const { toast } = useToast();
-
-//   useEffect(() => {
-//     if (!open) {
-//       setRawData([]);
-//       return;
-//     }
-//      setCurrentPage(1); 
-
-//     setLoading(true);
-//     setSearchTerm('');
-    
-//     // Set the default filter state when the modal opens.
-//     setFilterValue(type === 'in-review' ? 'in-review-default' : 'all');
-
-//     let promise;
-//     switch (type) {
-//       case 'my-applications':
-//       case 'in-review':
-//         promise = supabase.rpc('get_my_applications');
-//         break;
-//       case 'my-interviews':
-//         promise = supabase.rpc('get_my_scheduled_interviews');
-//         break;
-//       default:
-//         promise = Promise.resolve({ data: [], error: null });
-//     }
-
-//     promise.then(({ data, error }) => {
-//       if (error) {
-//         toast({ title: "Error loading details", description: error.message, variant: "destructive" });
-//       } else {
-//         setRawData(data || []);
-//       }
-//     }).finally(() => {
-//       setLoading(false);
-//     });
-
-//   }, [open, type, toast]);
-
-//   const filteredData = useMemo(() => {
-//     let processedData = [...rawData];
-
-//     // --- LOGIC PIPELINE STEP 1: Apply the main status filter ---
-//     if (filterValue === 'in-review-default') {
-//       const inReviewStatuses = ['selected', 'screening', 'interview'];
-//       processedData = processedData.filter(app => inReviewStatuses.includes(app.status));
-//     } else if (filterValue !== 'all') {
-//       processedData = processedData.filter(app => app.status === filterValue);
-//     }
-
-//     // --- LOGIC PIPELINE STEP 2: Apply search term on top ---
-//     if (searchTerm) {
-//       const lowercasedSearchTerm = searchTerm.toLowerCase();
-//       processedData = processedData.filter(item => {
-//         const searchFields = getSearchFields(item, type);
-//         return searchFields.some(field => field?.toString().toLowerCase().includes(lowercasedSearchTerm));
-//       });
-//     }
-
-//     return processedData;
-//   }, [rawData, searchTerm, filterValue]);
-
-//   useEffect(() => {
-//     if (!loading) { // Prevents resetting on the initial load
-//       setCurrentPage(1);
-//     }
-//   }, [filterValue, searchTerm]);
-
-//   // --- 2. CALCULATE PAGINATED DATA & TOTALS ---
-//   const totalItemCount = filteredData.length;
-//   const totalPages = Math.ceil(totalItemCount / ITEMS_PER_PAGE);
-
-//   const paginatedData = useMemo(() => {
-//     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-//     return filteredData.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-//   }, [filteredData, currentPage]);
-  
-//   // --- 3. EXPORT THE NEW STATE AND HANDLERS ---
-//   return { 
-//     paginatedData, // Use this for the table
-//     loading, 
-//     searchTerm, 
-//     setSearchTerm, 
-//     filterValue, 
-//     setFilterValue,
-//     currentPage,
-//     onPageChange: setCurrentPage,
-//     totalPages,
-//     totalRecords: totalItemCount // For the header 
-// };
-// };
-
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -211,6 +98,7 @@ export const useCandidateViewData = (
     totalRecords: totalItemCount
   };
 };
+
 // import { useState, useEffect, useMemo } from 'react';
 // import { supabase } from '@/integrations/supabase/client';
 // import { useToast } from '@/hooks/use-toast';
