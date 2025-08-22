@@ -1273,10 +1273,3 @@ const refetchData = useCallback(() => {
 };
 
 export default InterviewerDashboard;
-
-
-
-
-
-
-

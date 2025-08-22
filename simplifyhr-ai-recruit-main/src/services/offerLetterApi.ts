@@ -8,6 +8,23 @@ interface OfferLetterData {
   [key: string]: any;
 }
 
+interface TemplateField {
+  id: string;
+  label: string;
+  type: 'text' | 'textarea' | 'number' | 'date' | 'select';
+  required: boolean;
+  placeholder?: string;
+  description?: string;
+  options?: string[];
+}
+
+interface ExtractFieldsResponse {
+  success: boolean;
+  fields: TemplateField[];
+  message: string;
+  processing_time?: number;
+}
+
 interface GenerateOfferRequest {
   template_file: File;
   data: OfferLetterData;
@@ -49,11 +66,39 @@ interface EmailStatusResponse {
   duration?: number;
 }
 
+interface ExtractFieldsResponse {
+  success: boolean;
+  request_id: string;
+  message: string;
+  template_info: {
+    filename: string;
+    placeholders_found: number;
+    placeholders: string[];
+    paragraph_count?: number;
+    table_count?: number;
+    section_count?: number;
+  };
+  json_file: {
+    download_url: string;
+    filename: string;
+  };
+  usage_instructions?: {
+    description: string;
+    example_curl?: string;
+  };
+}
+
 export class OfferLetterApiService {
   private baseUrl: string;
   
-  constructor(baseUrl = 'http://localhost:8000') {
+  constructor(baseUrl = import.meta.env.VITE_OFFER_LETTER_API_URL || 'http://localhost:8000') {
     this.baseUrl = baseUrl;
+  }
+
+  private getDefaultHeaders(): Record<string, string> {
+    return {
+      'Accept': 'application/json',
+    };
   }
 
   async generateOfferLetter(request: GenerateOfferRequest): Promise<OfferApiResponse> {
@@ -71,6 +116,33 @@ export class OfferLetterApiService {
 
     if (!response.ok) {
       throw new Error(`Failed to generate offer letter: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  async extractTemplateFields(templateFile: File, includeSampleData = true): Promise<ExtractFieldsResponse> {
+    const formData = new FormData();
+    formData.append('template_file', templateFile);
+    formData.append('include_sample_data', includeSampleData.toString());
+
+    const response = await fetch(`${this.baseUrl}/api/v1/extract-template-fields`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to extract template fields: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  async downloadTemplateFieldsJson(downloadUrl: string): Promise<any> {
+    const response = await fetch(`${this.baseUrl}${downloadUrl}`);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to download template fields JSON: ${response.statusText}`);
     }
 
     return response.json();
@@ -103,14 +175,32 @@ export class OfferLetterApiService {
     return response.json();
   }
 
-  async downloadFile(fileId: string): Promise<Blob> {
-    const response = await fetch(`${this.baseUrl}/api/v1/download/${fileId}`);
+  /**
+   * Download a file by its ID or URL path
+   * @param fileIdOrPath - The ID of the file to download or full URL path
+   * @returns Promise<Blob> - The file as a blob
+   */
+  async downloadFile(fileIdOrPath: string): Promise<Blob> {
+    // Check if the parameter is already a full URL path or just a file ID
+    let url: string;
+    if (fileIdOrPath.startsWith('/api/') || fileIdOrPath.startsWith('http')) {
+      // It's already a full path or URL
+      url = fileIdOrPath.startsWith('http') ? fileIdOrPath : `${this.baseUrl}${fileIdOrPath}`;
+    } else {
+      // It's just a file ID, construct the full URL
+      url = `${this.baseUrl}/api/v1/download/${fileIdOrPath}`;
+    }
     
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: this.getDefaultHeaders(),
+    });
+
     if (!response.ok) {
       throw new Error(`Failed to download file: ${response.statusText}`);
     }
 
-    return response.blob();
+    return await response.blob();
   }
 
   async healthCheck(): Promise<any> {
@@ -180,4 +270,5 @@ export const generateOfferEmailContent = (candidateName: string, position: strin
   `;
 };
 
+export type { TemplateField, ExtractFieldsResponse };
 export default OfferLetterApiService;

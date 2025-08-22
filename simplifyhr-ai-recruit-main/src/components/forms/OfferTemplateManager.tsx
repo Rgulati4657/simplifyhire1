@@ -24,16 +24,12 @@ interface OfferTemplate {
   id: string;
   template_name: string;
   template_content: string;
-  template_link?: string;
   created_at: string;
   updated_at: string;
-  is_validated: boolean;
-  is_default: boolean;
-  template_version: number;
+  is_validated: boolean | null;
   country: string;
-  job_role: string;
-  validation_notes?: string;
-  company_id: string;
+  job_role: string | null;
+  validation_notes?: string | null;
   created_by: string;
 }
 
@@ -92,7 +88,18 @@ const OfferTemplateManager = ({ trigger, onTemplateUploaded }: OfferTemplateMana
       setLoading(true);
       const { data, error } = await supabase
         .from('offer_templates')
-        .select('*')
+        .select(`
+          id,
+          template_name,
+          template_content,
+          created_at,
+          updated_at,
+          is_validated,
+          country,
+          job_role,
+          validation_notes,
+          created_by
+        `)
         .eq('created_by', profile.id)
         .order('created_at', { ascending: false });
       
@@ -140,37 +147,167 @@ const OfferTemplateManager = ({ trigger, onTemplateUploaded }: OfferTemplateMana
         .from('offer-templates')
         .upload(fileName, selectedFile);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Storage upload error:', uploadError);
+        if (uploadError.message === "Bucket not found") {
+          toast({
+            title: "Storage bucket missing",
+            description: "Please run the create_storage_bucket.sql script in your Supabase dashboard first",
+            variant: "destructive",
+          });
+        }
+        throw uploadError;
+      }
 
-      // Get current user's company_id - this would need to be fetched from user context
-      // For now, using a placeholder - you'll need to implement proper company resolution
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('company_name')
-        .eq('id', profile.id)
-        .single();
+      // For now, store just the file path as string (as per current types)  
+      const templateContent = uploadData.path;
 
-      if (profileError) throw profileError;
+      // Make template name unique to avoid constraint violations
+      // The database has a unique constraint on (company_id, template_name)
+      const timestamp = Date.now();
+      const randomSuffix = Math.random().toString(36).substring(2, 8);
+      const fileExtension = selectedFile.name.substring(selectedFile.name.lastIndexOf('.'));
+      const nameWithoutExt = selectedFile.name.substring(0, selectedFile.name.lastIndexOf('.'));
+      const uniqueTemplateName = `${nameWithoutExt}_${timestamp}_${randomSuffix}${fileExtension}`;
 
-      // Create template record with new schema
+      // Handle company_id requirement
+      // First, let's try without company_id to see if that's the issue
+      let insertData: any = {
+        template_name: uniqueTemplateName,
+        template_content: templateContent,
+        created_by: profile.id,
+        country: 'Indonesia',
+        job_role: selectedRole || 'General',
+        is_validated: false
+      };
+
+      // Try to get or create a company first - company_id is REQUIRED
+      console.log('Starting company lookup/creation for user:', profile.id);
+      
+      let companyId = null;
+      
+      try {
+        // First try to find any existing company (companies are not user-specific)
+        console.log('Searching for existing company...');
+        const { data: existingCompany, error: findError } = await supabase
+          .from('companies')
+          .select('id')
+          .eq('is_active', true)
+          .limit(1)
+          .maybeSingle();
+
+        if (findError) {
+          console.error('Error finding existing company:', findError);
+        }
+
+        if (existingCompany) {
+          console.log('✓ Found existing company:', existingCompany.id);
+          companyId = existingCompany.id;
+        } else {
+          // No existing company, create one
+          console.log('No existing company found. Creating new company...');
+          const { data: newCompany, error: companyError } = await supabase
+            .from('companies')
+            .insert({
+              name: `${profile.email || 'User'}'s Company`,
+              description: 'Auto-created company for offer templates',
+              industry: 'Technology',
+              size_range: '1-10',
+              website: null,
+              address: 'Jakarta, Indonesia',
+              country: 'Indonesia',
+              is_active: true,
+              commission_rate: 0.00
+            })
+            .select('id')
+            .single();
+
+          if (companyError) {
+            console.error('Failed to create company:', companyError);
+            throw new Error(`Cannot create company: ${companyError.message}`);
+          }
+
+          if (newCompany) {
+            console.log('✓ Created new company:', newCompany.id);
+            companyId = newCompany.id;
+          } else {
+            throw new Error('Company creation returned no data');
+          }
+        }
+
+        // Ensure we have a company_id before proceeding
+        if (!companyId) {
+          throw new Error('Could not obtain valid company ID');
+        }
+
+        console.log('Final company_id to use:', companyId);
+        insertData.company_id = companyId;
+
+      } catch (error) {
+        console.error('Company handling failed completely:', error);
+        toast({
+          title: "Company setup required",
+          description: "Unable to create or find company record. Please contact support.",
+          variant: "destructive",
+        });
+        throw error; // Don't proceed without company_id since it's required
+      }
+
+      console.log('Creating template with unique name:', uniqueTemplateName);
+      console.log('Final insert data:', insertData);
+
+      // Create template record
+      console.log('Attempting to insert template with data:', insertData);
+
       const { data: template, error: templateError } = await supabase
         .from('offer_templates')
-        .insert({
-          template_name: selectedFile.name,
-          template_content: uploadData.path,
-          template_link: uploadData.path, // Store file path as link
-          created_by: profile.id,
-          company_id: profile.id, // You'll need to implement proper company_id resolution
-          country: 'Indonesia', // Default country, can be made configurable
-          job_role: selectedRole,
-          is_validated: false,
-          is_default: false,
-          template_version: 1
-        })
+        .insert(insertData)
         .select()
         .single();
 
-      if (templateError) throw templateError;
+      if (templateError) {
+        console.error('Database insert error:', templateError);
+        console.error('Error details:', {
+          code: templateError.code,
+          message: templateError.message,
+          details: templateError.details,
+          hint: templateError.hint
+        });
+        
+        // Check specific error codes
+        if (templateError.code === '23502') {
+          toast({
+            title: "Missing company information",
+            description: "Company ID is required but not found. Please contact support.",
+            variant: "destructive",
+          });
+        } else if (templateError.code === '23505') {
+          toast({
+            title: "Template name conflict",
+            description: "A template with this name already exists. Please try again.",
+            variant: "destructive",
+          });
+        } else if (templateError.code === '23503') {
+          toast({
+            title: "Foreign key constraint",
+            description: "Company reference issue. Please contact support.",
+            variant: "destructive",
+          });
+        } else if (templateError.code === '42501') {
+          toast({
+            title: "Permission denied",
+            description: "You don't have permission to insert templates. Please check your account setup.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Database error",
+            description: templateError.message || "Could not save template to database",
+            variant: "destructive",
+          });
+        }
+        throw templateError;
+      }
 
       setTemplates(prev => [template as OfferTemplate, ...prev]);
       setSelectedFile(null);
